@@ -1,0 +1,172 @@
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { 
+  QrCode, CheckCircle2, XCircle, AlertTriangle, 
+  Loader2, Shield, ArrowLeft
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuthStore } from '../store/useAuthStore';
+
+type MarkStatus = 'IDLE' | 'LOADING' | 'SUCCESS' | 'DUPLICATE' | 'ERROR' | 'NO_TOKEN';
+
+const MarkAttendance: React.FC = () => {
+  const { user } = useAuthStore();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const token = searchParams.get('token');
+
+  const [status, setStatus] = useState<MarkStatus>(token ? 'IDLE' : 'NO_TOKEN');
+  const [message, setMessage] = useState('');
+  const [manualToken, setManualToken] = useState('');
+
+  const markAttendance = async (tokenToUse: string) => {
+    if (!tokenToUse || !user) return;
+    setStatus('LOADING');
+    try {
+      const res = await fetch('http://localhost:3001/api/attendance/mark', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenToUse, userId: user.id })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatus('SUCCESS');
+        setMessage(`Attendance marked for ${data.courseName}!`);
+      } else if (res.status === 409) {
+        setStatus('DUPLICATE');
+        setMessage(data.error || 'Already marked');
+      } else {
+        setStatus('ERROR');
+        setMessage(data.error || 'Failed to mark attendance');
+      }
+    } catch (e) {
+      setStatus('ERROR');
+      setMessage('Network error. Please try again.');
+    }
+  };
+
+  useEffect(() => {
+    // If token in URL — auto-mark on load
+    if (token && user && status === 'IDLE') {
+      markAttendance(token);
+    }
+  }, [token, user]);
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (manualToken.trim()) {
+      markAttendance(manualToken.trim().toUpperCase());
+    }
+  };
+
+  return (
+    <div className="min-h-[80vh] flex items-center justify-center">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-md"
+      >
+        <div className="glass-card p-10 text-center space-y-8">
+          {/* Header */}
+          <div>
+            <div className="w-20 h-20 mx-auto rounded-3xl bg-primary/10 flex items-center justify-center mb-6 border border-primary/20">
+              <QrCode size={40} className="text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold">Mark Attendance</h1>
+            <p className="text-sm text-white/40 mt-2">
+              {user?.name} • {user?.department || 'General'}
+            </p>
+          </div>
+
+          {/* Status Display */}
+          <AnimatePresence mode="wait">
+            {status === 'LOADING' && (
+              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4 py-6">
+                <Loader2 size={48} className="mx-auto text-primary animate-spin" />
+                <p className="text-sm text-white/60 font-medium">Verifying token...</p>
+              </motion.div>
+            )}
+
+            {status === 'SUCCESS' && (
+              <motion.div key="success" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4 py-6">
+                <div className="w-20 h-20 mx-auto rounded-full bg-accent/20 flex items-center justify-center border border-accent/30">
+                  <CheckCircle2 size={40} className="text-accent" />
+                </div>
+                <h2 className="text-xl font-bold text-accent">Attendance Marked!</h2>
+                <p className="text-sm text-white/50">{message}</p>
+                <p className="text-xs text-white/30 mt-4">You may close this page now.</p>
+              </motion.div>
+            )}
+
+            {status === 'DUPLICATE' && (
+              <motion.div key="duplicate" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4 py-6">
+                <div className="w-20 h-20 mx-auto rounded-full bg-yellow-500/20 flex items-center justify-center border border-yellow-500/30">
+                  <AlertTriangle size={40} className="text-yellow-500" />
+                </div>
+                <h2 className="text-xl font-bold text-yellow-500">Already Marked</h2>
+                <p className="text-sm text-white/50">{message}</p>
+              </motion.div>
+            )}
+
+            {status === 'ERROR' && (
+              <motion.div key="error" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4 py-6">
+                <div className="w-20 h-20 mx-auto rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/30">
+                  <XCircle size={40} className="text-red-500" />
+                </div>
+                <h2 className="text-xl font-bold text-red-400">Failed</h2>
+                <p className="text-sm text-white/50">{message}</p>
+                <button onClick={() => { setStatus('NO_TOKEN'); setMessage(''); }} className="btn-secondary mx-auto mt-4">
+                  Try Again
+                </button>
+              </motion.div>
+            )}
+
+            {(status === 'IDLE' || status === 'NO_TOKEN') && (
+              <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                <div className="p-4 glass rounded-2xl border border-primary/10 bg-primary/5">
+                  <Shield size={20} className="text-primary mx-auto mb-2" />
+                  <p className="text-xs text-white/50">Enter the attendance code displayed on your professor's screen to mark your presence.</p>
+                </div>
+
+                <form onSubmit={handleManualSubmit} className="space-y-4">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 block mb-2">Session Token</label>
+                    <input
+                      type="text"
+                      value={manualToken}
+                      onChange={(e) => setManualToken(e.target.value.toUpperCase())}
+                      placeholder="e.g. A1B2C3D4"
+                      maxLength={8}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-center text-2xl font-mono font-bold tracking-[0.3em] outline-none focus:border-primary/50 uppercase placeholder:text-white/10 placeholder:text-base placeholder:tracking-normal"
+                    />
+                  </div>
+                  <button 
+                    type="submit" 
+                    disabled={manualToken.length < 4}
+                    className={`w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                      manualToken.length >= 4 
+                        ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:shadow-primary/40' 
+                        : 'bg-white/5 text-white/20 cursor-not-allowed'
+                    }`}
+                  >
+                    <CheckCircle2 size={18} /> Mark My Attendance
+                  </button>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Back link */}
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2 mx-auto text-xs text-white/30 hover:text-white/60 transition-colors"
+          >
+            <ArrowLeft size={14} /> Back to Dashboard
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+export default MarkAttendance;
