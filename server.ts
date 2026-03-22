@@ -201,6 +201,26 @@ db.exec(`
   );
 `);
 
+// Dynamic altering for new geo-location columns
+try { db.exec("ALTER TABLE attendance_sessions ADD COLUMN latitude REAL"); } catch(e) {}
+try { db.exec("ALTER TABLE attendance_sessions ADD COLUMN longitude REAL"); } catch(e) {}
+try { db.exec("ALTER TABLE attendance ADD COLUMN latitude REAL"); } catch(e) {}
+try { db.exec("ALTER TABLE attendance ADD COLUMN longitude REAL"); } catch(e) {}
+
+// Helper for Haversine distance
+function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371e3; // metres
+  const \u03c61 = lat1 * Math.PI/180;
+  const \u03c62 = lat2 * Math.PI/180;
+  const \u0394\u03c6 = (lat2-lat1) * Math.PI/180;
+  const \u0394\u03bb = (lon2-lon1) * Math.PI/180;
+  const a = Math.sin(\u0394\u03c6/2) * Math.sin(\u0394\u03c6/2) +
+            Math.cos(\u03c61) * Math.cos(\u03c62) *
+            Math.sin(\u0394\u03bb/2) * Math.sin(\u0394\u03bb/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
 function seedDatabase() {
   // Seed Users
   const seedUser = db.prepare('INSERT OR REPLACE INTO users (id, username, password, role, name, department) VALUES (?, ?, ?, ?, ?, ?)');
@@ -793,13 +813,13 @@ app.get('/api/attendance/report', (req, res) => {
 
 // Start a new attendance session
 app.post('/api/attendance/session/start', (req, res) => {
-  const { courseId, facultyId, department } = req.body;
+  const { courseId, facultyId, department, latitude, longitude } = req.body;
   // Close any existing active session for this course
   db.prepare("UPDATE attendance_sessions SET status = 'CLOSED' WHERE course_id = ? AND status = 'ACTIVE'").run(courseId);
   const id = uuidv4();
   const token = uuidv4().replace(/-/g, '').substring(0, 8).toUpperCase();
-  db.prepare('INSERT INTO attendance_sessions (id, course_id, faculty_id, token, department) VALUES (?, ?, ?, ?, ?)')
-    .run(id, courseId, facultyId, token, department);
+  db.prepare('INSERT INTO attendance_sessions (id, course_id, faculty_id, token, department, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(id, courseId, facultyId, token, department, latitude || null, longitude || null);
   // Broadcast session started
   broadcastEvent('SESSION_STARTED', { sessionId: id, courseId, token });
   res.json({ success: true, sessionId: id, token });
@@ -835,12 +855,24 @@ app.get('/api/attendance/session/active', (req, res) => {
 
 // Student marks attendance via token
 app.post('/api/attendance/mark', (req, res) => {
-  const { token, userId } = req.body;
+  const { token, userId, latitude, longitude } = req.body;
   // Find active session with this token
   const session = db.prepare("SELECT * FROM attendance_sessions WHERE token = ? AND status = 'ACTIVE'").get(token) as any;
   if (!session) {
     return res.status(400).json({ error: 'Invalid or expired token' });
   }
+
+  // Geo-location Check (Allow if either doesn't have coordinates to be forgiving in fallback mode,
+  // but if both exist, verify distance is <= 150m)
+  if (session.latitude && session.longitude && latitude && longitude) {
+    const distance = getDistanceInMeters(session.latitude, session.longitude, latitude, longitude);
+    if (distance > 150) { // 150 meters radius
+      return res.status(403).json({ error: `You are too far from the classroom (${Math.round(distance)}m). You must be within 150m.` });
+    }
+  } else if (!latitude || !longitude) {
+    return res.status(403).json({ error: 'Location required to mark attendance securely.' });
+  }
+
   // Check for duplicate
   const existing = db.prepare('SELECT * FROM attendance WHERE user_id = ? AND session_id = ?')
     .get(userId, session.id) as any;
@@ -854,8 +886,8 @@ app.post('/api/attendance/mark', (req, res) => {
   }
   // Insert attendance record (using session.id as the session_id field)
   const id = uuidv4();
-  db.prepare('INSERT INTO attendance (id, user_id, session_id, status) VALUES (?, ?, ?, ?)')
-    .run(id, userId, session.id, 'PRESENT');
+  db.prepare('INSERT INTO attendance (id, user_id, session_id, status, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(id, userId, session.id, 'PRESENT', latitude || null, longitude || null);
   // Broadcast to all connected clients
   const broadcastData = {
     type: 'ATTENDANCE_MARKED',
@@ -873,7 +905,7 @@ app.post('/api/attendance/mark', (req, res) => {
 // Get attendance records for a specific session
 app.get('/api/attendance/session/:sessionId/records', (req, res) => {
   const records = db.prepare(
-    'SELECT a.*, u.name as student_name FROM attendance a JOIN users u ON a.user_id = u.id WHERE a.date = ? ORDER BY rowid DESC'
+    'SELECT a.*, u.name as student_name FROM attendance a JOIN users u ON a.user_id = u.id WHERE a.session_id = ? ORDER BY a.timestamp DESC'
   ).all(req.params.sessionId);
   res.json(records);
 });

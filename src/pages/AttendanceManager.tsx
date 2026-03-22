@@ -89,12 +89,30 @@ const AttendanceManager: React.FC = () => {
     }
   };
 
+  const getGeoLocation = (): Promise<{latitude: number | null, longitude: number | null}> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve({ latitude: null, longitude: null });
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        (err) => {
+          console.warn("Geolocation not available/denied:", err);
+          resolve({ latitude: null, longitude: null });
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    });
+  };
+
   const startSession = async (courseId: string) => {
     try {
+      const { latitude, longitude } = await getGeoLocation();
       const res = await fetch('http://localhost:3001/api/attendance/session/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ courseId, facultyId: user?.id, department: dept })
+        body: JSON.stringify({ courseId, facultyId: user?.id, department: dept, latitude, longitude })
       });
       if (res.ok) {
         const data = await res.json();

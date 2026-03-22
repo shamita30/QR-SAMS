@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   QrCode, CheckCircle2, XCircle, AlertTriangle, 
-  Loader2, Shield, ArrowLeft
+  Loader2, Shield, ArrowLeft, Camera
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useAuthStore } from '../store/useAuthStore';
 
 type MarkStatus = 'IDLE' | 'LOADING' | 'SUCCESS' | 'DUPLICATE' | 'ERROR' | 'NO_TOKEN';
@@ -18,15 +19,51 @@ const MarkAttendance: React.FC = () => {
   const [status, setStatus] = useState<MarkStatus>(token ? 'IDLE' : 'NO_TOKEN');
   const [message, setMessage] = useState('');
   const [manualToken, setManualToken] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
+
+  useEffect(() => {
+    if (showScanner) {
+      const scanner = new Html5QrcodeScanner('qr-reader', { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+      scanner.render((decodedText: string) => {
+        scanner.clear();
+        setShowScanner(false);
+        // Sometimes the decoded text might be a full URL if they scan the standard URL. 
+        // We'll extract token from URL if present.
+        try {
+          const url = new URL(decodedText);
+          const urlToken = url.searchParams.get('token');
+          if (urlToken) markAttendance(urlToken.trim().toUpperCase());
+          else markAttendance(decodedText.trim().toUpperCase());
+        } catch(e) {
+            markAttendance(decodedText.trim().toUpperCase());
+        }
+      }, (_err: any) => { /* ignore */ });
+      return () => {
+        scanner.clear().catch((e: any) => console.warn(e));
+      };
+    }
+  }, [showScanner]);
+
+  const getGeoLocation = (): Promise<{latitude: number | null, longitude: number | null}> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) return resolve({ latitude: null, longitude: null });
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        (_err: any) => resolve({ latitude: null, longitude: null }),
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    });
+  };
 
   const markAttendance = async (tokenToUse: string) => {
     if (!tokenToUse || !user) return;
     setStatus('LOADING');
     try {
+      const { latitude, longitude } = await getGeoLocation();
       const res = await fetch('http://localhost:3001/api/attendance/mark', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: tokenToUse, userId: user.id })
+        body: JSON.stringify({ token: tokenToUse, userId: user.id, latitude, longitude })
       });
       const data = await res.json();
       if (res.ok) {
@@ -128,30 +165,48 @@ const MarkAttendance: React.FC = () => {
                   <p className="text-xs text-white/50">Enter the attendance code displayed on your professor's screen to mark your presence.</p>
                 </div>
 
-                <form onSubmit={handleManualSubmit} className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 block mb-2">Session Token</label>
-                    <input
-                      type="text"
-                      value={manualToken}
-                      onChange={(e) => setManualToken(e.target.value.toUpperCase())}
-                      placeholder="e.g. A1B2C3D4"
-                      maxLength={8}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-center text-2xl font-mono font-bold tracking-[0.3em] outline-none focus:border-primary/50 uppercase placeholder:text-white/10 placeholder:text-base placeholder:tracking-normal"
-                    />
-                  </div>
+                {showScanner ? (
+                   <div className="space-y-4">
+                     <div id="qr-reader" className="w-full bg-white/5 rounded-2xl overflow-hidden border border-white/10"></div>
+                     <button onClick={() => setShowScanner(false)} className="mx-auto text-xs text-white/40 hover:text-white block">Cancel Scanner</button>
+                   </div>
+                ) : (
+                  <>
                   <button 
-                    type="submit" 
-                    disabled={manualToken.length < 4}
-                    className={`w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-                      manualToken.length >= 4 
-                        ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:shadow-primary/40' 
-                        : 'bg-white/5 text-white/20 cursor-not-allowed'
-                    }`}
-                  >
-                    <CheckCircle2 size={18} /> Mark My Attendance
-                  </button>
-                </form>
+                    onClick={() => setShowScanner(true)}
+                    className="w-full py-4 rounded-2xl font-bold text-sm bg-accent/20 text-accent border border-accent/30 hover:bg-accent/30 transition-all flex items-center justify-center gap-2 mb-6"
+                   >
+                     <Camera size={18} /> Scan QR Code
+                   </button>
+                   <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-widest text-white/30 mb-6">
+                     <div className="flex-1 h-px bg-white/10" /> OR <div className="flex-1 h-px bg-white/10" />
+                   </div>
+                  <form onSubmit={handleManualSubmit} className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 block mb-2">Session Token</label>
+                      <input
+                        type="text"
+                        value={manualToken}
+                        onChange={(e) => setManualToken(e.target.value.toUpperCase())}
+                        placeholder="e.g. A1B2C3D4"
+                        maxLength={8}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-center text-2xl font-mono font-bold tracking-[0.3em] outline-none focus:border-primary/50 uppercase placeholder:text-white/10 placeholder:text-base placeholder:tracking-normal"
+                      />
+                    </div>
+                    <button 
+                      type="submit" 
+                      disabled={manualToken.length < 4}
+                      className={`w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                        manualToken.length >= 4 
+                          ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:shadow-primary/40' 
+                          : 'bg-white/5 text-white/20 cursor-not-allowed'
+                      }`}
+                    >
+                      <CheckCircle2 size={18} /> Mark My Attendance
+                    </button>
+                  </form>
+                  </>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
