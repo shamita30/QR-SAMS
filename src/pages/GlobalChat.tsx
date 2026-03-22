@@ -23,7 +23,10 @@ const GlobalChat: React.FC = () => {
   useEffect(() => {
     // Connect to WebSocket server
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${protocol}//${window.location.hostname}:3001`);
+    const wsUrl = window.location.port === '3000' 
+      ? `${protocol}//${window.location.hostname}:3001`
+      : `${protocol}//${window.location.host}`;
+    const socket = new WebSocket(wsUrl);
     socketRef.current = socket;
 
     socket.onopen = () => {
