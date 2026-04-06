@@ -38,6 +38,9 @@ export interface ProjectMilestone {
 export interface NoteSynthesisResult {
   summary: string;
   keyPoints: string[];
+  roadmap: Array<{ title: string; desc: string; status: 'COMPLETED' | 'ACTIVE' | 'LOCKED' }>;
+  mermaidMindMap: string;
+  formulaSheet: Array<{ topic: string; formula: string; explanation: string }>;
   flashcards: Array<{ question: string; answer: string }>;
   quiz: Array<{ question: string; options: string[]; answer: string; explanation: string }>;
 }

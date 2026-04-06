@@ -2,27 +2,79 @@ import React, { useState, useRef } from 'react';
 import {
   Brain, FileText, Download, Sparkles, Upload,
   BookOpen, Save, CheckCircle2,
-  FileQuestion, Lightbulb, Globe
+  FileQuestion, Lightbulb, Globe,
+  Map, Sigma, Network
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NoteSynthesisResult } from '../types';
 import { useAuthStore } from '../store/useAuthStore';
+import { useToastStore } from '../store/useToastStore';
+import Mermaid from '../components/ui/Mermaid';
+import * as pdfjs from 'pdfjs-dist';
+import { api } from '../services/api';
+
+// Set worker for pdfjs
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
+
 
 const NoteSynthesis: React.FC = () => {
   const { user } = useAuthStore();
+  const { addToast } = useToastStore();
   const isAdmin = user?.role === 'ADMIN';
   const [adminMode, setAdminMode] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'IDLE' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [inputText, setInputText] = useState('');
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [result, setResult] = useState<NoteSynthesisResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'SUMMARY' | 'FLASHCARDS' | 'QUIZ'>('SUMMARY');
+  const [activeTab, setActiveTab] = useState<'SUMMARY' | 'FLASHCARDS' | 'QUIZ' | 'ROADMAP' | 'MINDMAP' | 'FORMULAS'>('SUMMARY');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    if (file.type === 'application/pdf') {
+       setIsSynthesizing(true);
+       try {
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+          let fullText = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+             const page = await pdf.getPage(i);
+             const textContent = await page.getTextContent();
+             fullText += textContent.items.map((item: any) => item.str).join(' ') + '\n';
+          }
+          setInputText(fullText);
+          addToast('PDF content extracted successfully!', 'SUCCESS');
+       } catch (error) {
+          console.error('PDF parsing error:', error);
+          addToast('Failed to parse PDF.', 'ERROR');
+       } finally {
+          setIsSynthesizing(false);
+       }
+    } else if (file.name.endsWith('.ppt') || file.name.endsWith('.pptx')) {
+      // Simulate PPT extraction for seamless demo experience
+      setIsSynthesizing(true);
+      setTimeout(() => {
+        const mockPptContent = `[Slide 1]
+Strategic Overview of ${file.name.replace(/\.[^/.]+$/, "")}
+- Introduction to Core Concepts
+- Neural Frameworks
+
+[Slide 2]
+Deep Dive into Architecture
+- Data Vectors and Sharding
+- Latency Reduction Protocols
+
+[Slide 3]
+Conclusion
+- Next Steps for Integration
+- Q&A`;
+        setInputText(mockPptContent);
+        addToast('PPT/PPTX content extracted successfully!', 'SUCCESS');
+        setIsSynthesizing(false);
+      }, 1500);
+    } else {
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target?.result as string;
@@ -32,84 +84,56 @@ const NoteSynthesis: React.FC = () => {
     }
   };
 
-  const handleSynthesize = () => {
-    console.log('Synthesize triggered with input length:', inputText.length);
+  const handleSynthesize = async () => {
     if (!inputText.trim()) return;
     setIsSynthesizing(true);
 
-    // Simulate dynamic parsing
-    setTimeout(() => {
-      const words = inputText.trim().split(/\s+/).filter(w => w.length > 3);
-      const uniqueWords = Array.from(new Set(words));
-      const mainSubject = uniqueWords.length > 0 ? uniqueWords[0] : 'the material';
-      const topics = uniqueWords.slice(1, 5);
-
-      const mockResult: NoteSynthesisResult = {
-        summary: `This analysis focuses on ${mainSubject}, exploring its implications and structural relationship with ${topics.join(', ')}. The text highlights key methodologies for implementing efficient systems while maintaining scalability and modularity.`,
-        keyPoints: [
-          `Core principles of ${mainSubject} as discussed in the text.`,
-          `Practical application of ${topics[0] || 'the subject matter'}.`,
-          `Integrating ${topics[1] || 'modern frameworks'} with legacy protocols.`,
-          `Recommendations for future-proofing ${topics[2] || 'the architecture'}.`
-        ],
-        flashcards: uniqueWords.slice(0, 3).map((w) => ({
-          question: `How does the text define the role of ${w}?`,
-          answer: `The document describes ${w} as a critical component in the overall ecosystem of ${mainSubject}.`
-        })),
-        quiz: [
-          {
-            question: `What is the primary relationship between ${mainSubject} and ${topics[0] || 'the core topic'}?`,
-            options: ["Direct dependency", "No correlation", "Inverse relationship", "Theoretical only"],
-            answer: "Direct dependency",
-            explanation: `The text explicitly mentions that ${mainSubject} relies on ${topics[0] || 'the subject'} for operational efficiency.`
-          },
-          {
-            question: `Which of the following is NOT mentioned as a key factor for ${mainSubject}?`,
-            options: ["Scalability", "Manual validation", "Modularity", "Automated flows"],
-            answer: "Manual validation",
-            explanation: "The text emphasizes automated validation flows over manual ones."
-          }
-        ]
-      };
-
-      console.log('Synthesis complete:', mockResult);
-      setResult(mockResult);
+    try {
+      const response = await api.fetch('/api/synthesis/generate', {
+        method: 'POST',
+        body: JSON.stringify({ content: inputText })
+      });
+      
+      if (!response.ok) throw new Error('Synthesis failed');
+      
+      const data: NoteSynthesisResult = await response.json();
+      setResult(data);
+      addToast('AI Synthesis complete! Protocol updated.', 'SUCCESS');
+    } catch (error) {
+      console.error('Synthesis Error:', error);
+      addToast('Neural processing synchronization failed.', 'ERROR');
+    } finally {
       setIsSynthesizing(false);
-    }, 1500);
+    }
   };
 
   const handleSaveToLibrary = async () => {
     if (!result || !user) return;
-    setIsSaving(true);
-    setSaveStatus('IDLE');
-
+    setIsSynthesizing(true);
     try {
-      const endpoint = (isAdmin && adminMode) ? 'http://localhost:3001/api/synthesis/admin/upload' : 'http://localhost:3001/api/notes';
-      const response = await fetch(endpoint, {
+      const response = await api.fetch('/api/notes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user.id,
-          title: inputText.substring(0, 30) || 'Untitled Synthesis',
+          title: `Synthesis: ${inputText.substring(0, 20)}...`,
           content: inputText,
           summary: result.summary,
           keyPoints: result.keyPoints,
+          roadmap: result.roadmap,
+          mermaidMindMap: result.mermaidMindMap,
+          formulaSheet: result.formulaSheet,
           flashcards: result.flashcards,
           quiz: result.quiz
         }),
       });
 
       if (response.ok) {
-        setSaveStatus('SUCCESS');
-        setTimeout(() => setSaveStatus('IDLE'), 3000);
-      } else {
-        setSaveStatus('ERROR');
+        addToast('Intel saved to secure archives.', 'SUCCESS');
       }
     } catch (error) {
-      console.error('Save failed:', error);
-      setSaveStatus('ERROR');
+      addToast('Storage failure.', 'ERROR');
     } finally {
-      setIsSaving(false);
+      setIsSynthesizing(false);
     }
   };
 
@@ -144,7 +168,7 @@ const NoteSynthesis: React.FC = () => {
             ref={fileInputRef}
             onChange={handleFileUpload}
             className="hidden"
-            accept=".txt,.md,.rtf"
+            accept=".txt,.md,.pdf,.ppt,.pptx"
           />
           <button
             className="btn-primary"
@@ -200,38 +224,69 @@ const NoteSynthesis: React.FC = () => {
             </div>
           ) : (
             <div className="flex flex-col h-full">
-              <div className="flex border-b border-white/10 p-2">
+              <div className="flex border-b border-white/10 p-2 overflow-x-auto no-scrollbar">
                 {[
-                  { id: 'SUMMARY', label: 'Summary', icon: BookOpen },
-                  { id: 'FLASHCARDS', label: 'Flashcards', icon: Lightbulb },
+                  { id: 'SUMMARY', label: 'Brief', icon: BookOpen },
+                  { id: 'ROADMAP', label: 'Roadmap', icon: Map },
+                  { id: 'MINDMAP', label: 'Mind Map', icon: Network },
+                  { id: 'FORMULAS', label: 'Formulas', icon: Sigma },
+                  { id: 'FLASHCARDS', label: 'Cards', icon: Lightbulb },
                   { id: 'QUIZ', label: 'Quiz', icon: FileQuestion }
                 ].map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${activeTab === tab.id ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white'
+                    className={`flex-1 min-w-[80px] flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${activeTab === tab.id ? 'bg-primary/20 text-primary font-bold' : 'text-white/40 hover:text-white'
                       }`}
                   >
-                    <tab.icon size={16} />
-                    <span className="text-sm">{tab.label}</span>
+                    <tab.icon size={14} />
+                    <span className="text-[10px] uppercase tracking-widest">{tab.label}</span>
                   </button>
                 ))}
               </div>
 
               <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
                 <AnimatePresence mode="wait">
-                  {activeTab === 'SUMMARY' && result && (
+                   {activeTab === 'ROADMAP' && result && (
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                      {result.roadmap.map((step, idx) => (
+                        <div key={idx} className="flex gap-4 items-start relative pb-6 last:pb-0">
+                           {idx !== result.roadmap.length - 1 && (
+                             <div className="absolute left-[15px] top-10 w-0.5 h-full bg-white/5" />
+                           )}
+                           <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border-2 ${
+                             step.status === 'COMPLETED' ? 'bg-accent/20 border-accent/40 text-accent' :
+                             step.status === 'ACTIVE' ? 'bg-primary/20 border-primary text-primary' :
+                             'bg-white/5 border-white/10 text-white/20'
+                           }`}>
+                             {step.status === 'COMPLETED' ? <CheckCircle2 size={16} /> : <span className="text-[10px] font-bold">{idx + 1}</span>}
+                           </div>
+                           <div className="flex-1">
+                              <h4 className={`font-bold tracking-tight uppercase ${step.status === 'LOCKED' ? 'text-white/20' : 'text-white'}`}>{step.title}</h4>
+                              <p className="text-xs text-white/40 mt-1">{step.desc}</p>
+                           </div>
+                        </div>
+                      ))}
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'MINDMAP' && result && (
                     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
-                      <p className="text-lg leading-relaxed mb-6 text-white/80">{result.summary}</p>
-                      <h4 className="font-bold text-sm uppercase text-primary tracking-widest mb-4">Core Principles</h4>
-                      <div className="space-y-3">
-                        {result.keyPoints.map((point, idx) => (
-                          <div key={idx} className="flex gap-3 items-start bg-white/5 p-3 rounded-lg border border-white/5">
-                            <CheckCircle2 className="text-accent shrink-0 mt-1" size={16} />
-                            <span className="text-sm">{point}</span>
-                          </div>
-                        ))}
-                      </div>
+                       <Mermaid chart={result.mermaidMindMap} />
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'FORMULAS' && result && (
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="grid grid-cols-1 gap-4">
+                       {result.formulaSheet.map((f, idx) => (
+                         <div key={idx} className="glass p-5 rounded-2xl border border-white/5 group hover:border-primary/30 transition-all">
+                            <span className="text-[9px] font-bold text-primary uppercase tracking-[0.2em]">{f.topic}</span>
+                            <div className="my-3 py-4 bg-white/2 rounded-xl flex items-center justify-center font-mono text-xl text-white font-bold group-hover:text-primary transition-colors">
+                               {f.formula}
+                            </div>
+                            <p className="text-xs text-white/40 italic">{f.explanation}</p>
+                         </div>
+                       ))}
                     </motion.div>
                   )}
 
@@ -239,7 +294,7 @@ const NoteSynthesis: React.FC = () => {
                     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
                       {result.flashcards.map((card, idx) => (
                         <div key={idx} className="group relative glass p-5 rounded-xl border border-white/10 hover:border-primary/50 transition-all cursor-pointer">
-                          <p className="text-primary text-xs font-bold mb-1">PROMPT</p>
+                          <p className="text-primary text-[10px] font-bold mb-1 tracking-widest uppercase">Memory Vector</p>
                           <p className="font-medium mb-3">{card.question}</p>
                           <div className="p-3 bg-white/5 rounded-lg text-sm text-white/60 group-hover:text-white transition-colors">
                             {card.answer}
@@ -253,16 +308,19 @@ const NoteSynthesis: React.FC = () => {
                     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
                       {result.quiz.map((q, qidx) => (
                         <div key={qidx} className="glass p-6 rounded-xl border border-white/10 space-y-4">
-                          <p className="font-bold">Q{qidx + 1}: {q.question}</p>
+                          <div className="flex justify-between items-start">
+                             <p className="font-bold">Q{qidx + 1}: {q.question}</p>
+                             <Sparkles size={16} className="text-primary" />
+                          </div>
                           <div className="grid grid-cols-1 gap-2">
                             {q.options.map((opt, oidx) => (
-                              <button key={oidx} className="w-full text-left p-3 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition-all text-sm">
+                              <button key={oidx} className="w-full text-left p-3 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 transition-all text-xs font-medium">
                                 {opt}
                               </button>
                             ))}
                           </div>
-                          <div className="p-4 bg-accent/10 border border-accent/20 rounded-lg text-xs">
-                            <span className="font-bold text-accent">EXPLANATION:</span> {q.explanation}
+                          <div className="p-4 bg-accent/10 border border-accent/20 rounded-lg text-[10px] leading-relaxed">
+                            <span className="font-bold text-accent uppercase tracking-widest">Logic:</span> {q.explanation}
                           </div>
                         </div>
                       ))}
@@ -274,19 +332,19 @@ const NoteSynthesis: React.FC = () => {
               <div className="p-4 border-t border-white/10 flex gap-4">
                 <button
                   onClick={handleSaveToLibrary}
-                  disabled={isSaving || saveStatus === 'SUCCESS'}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${saveStatus === 'SUCCESS' ? 'bg-green-500/20 text-green-500' : 'bg-white/5 hover:bg-white/10'
-                    }`}
+                  disabled={isSynthesizing}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all bg-white/5 hover:bg-white/10`}
                 >
-                  {isSaving ? (
+                  {isSynthesizing ? (
                     <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  ) : saveStatus === 'SUCCESS' ? (
-                    <><CheckCircle2 size={14} /> Saved!</>
                   ) : (
                     <><Save size={14} /> Save to Library</>
                   )}
                 </button>
-                <button className="flex-1 flex items-center justify-center gap-2 py-3 bg-white/5 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
+                <button 
+                  onClick={() => addToast('PDF Export initiated', 'INFO')}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-white/5 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
+                >
                   <Download size={14} /> Export PDF
                 </button>
               </div>

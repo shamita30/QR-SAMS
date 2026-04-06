@@ -1,0 +1,33 @@
+src/components/GlobalChatWidget.tsx(3,34): error TS6133: 'Smile' is declared but its value is never read.
+src/components/GlobalChatWidget.tsx(3,41): error TS6133: 'Info' is declared but its value is never read.
+src/pages/AttendanceManager.tsx(10,11): error TS6196: 'LiveRecord' is declared but never used.
+src/pages/AttendanceManager.tsx(35,9): error TS6133: 'isAdmin' is declared but its value is never read.
+src/pages/BulkExport.tsx(5,30): error TS6133: 'Search' is declared but its value is never read.
+src/pages/BulkExport.tsx(6,3): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/FacultyDirectory.tsx(5,3): error TS6133: 'MoreVertical' is declared but its value is never read.
+src/pages/FacultyDirectory.tsx(6,19): error TS6133: 'AlertCircle' is declared but its value is never read.
+src/pages/GlobalChat.tsx(2,46): error TS6133: 'Clock' is declared but its value is never read.
+src/pages/GlobalChat.tsx(73,15): error TS18047: 'user' is possibly 'null'.
+src/pages/GlobalChat.tsx(74,17): error TS18047: 'user' is possibly 'null'.
+src/pages/GlobalChat.tsx(75,17): error TS18047: 'user' is possibly 'null'.
+src/pages/GlobalChat.tsx(123,62): error TS18047: 'user' is possibly 'null'.
+src/pages/GlobalChat.tsx(132,38): error TS18047: 'user' is possibly 'null'.
+src/pages/LectureQuiz.tsx(3,38): error TS6133: 'XCircle' is declared but its value is never read.
+src/pages/LectureQuiz.tsx(4,15): error TS6133: 'Award' is declared but its value is never read.
+src/pages/LectureQuiz.tsx(4,22): error TS6133: 'Brain' is declared but its value is never read.
+src/pages/LectureQuiz.tsx(4,29): error TS6133: 'Zap' is declared but its value is never read.
+src/pages/LectureQuiz.tsx(5,3): error TS6133: 'Settings' is declared but its value is never read.
+src/pages/LectureQuiz.tsx(5,19): error TS6133: 'RotateCcw' is declared but its value is never read.
+src/pages/LectureQuiz.tsx(5,30): error TS6133: 'Info' is declared but its value is never read.
+src/pages/LectureQuiz.tsx(11,27): error TS6133: 'setCurrentQuestion' is declared but its value is never read.
+src/pages/MyClasses.tsx(5,21): error TS6133: 'Filter' is declared but its value is never read.
+src/pages/MyGrades.tsx(6,1): error TS6133: 'motion' is declared but its value is never read.
+src/pages/MyGrades.tsx(113,134): error TS2304: Cannot find name 'ChevronRight'.
+src/pages/Projects.tsx(33,60): error TS18047: 'user' is possibly 'null'.
+src/pages/Projects.tsx(155,40): error TS18047: 'user' is possibly 'null'.
+src/pages/Projects.tsx(156,41): error TS18047: 'user' is possibly 'null'.
+src/pages/Sentiment.tsx(13,17): error TS18047: 'user' is possibly 'null'.
+src/pages/Sentiment.tsx(14,16): error TS18047: 'user' is possibly 'null'.
+src/pages/StudentPortal.tsx(3,11): error TS6133: 'Star' is declared but its value is never read.
+src/pages/StudentPortal.tsx(3,25): error TS6133: 'Users' is declared but its value is never read.
+src/pages/StudentPortal.tsx(8,1): error TS6133: 'motion' is declared but its value is never read.

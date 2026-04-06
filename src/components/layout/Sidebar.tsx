@@ -7,17 +7,24 @@ import {
   QrCode, Database, FileText, Timer,
   Calendar, MessageSquare, Settings,
   Video, BookMarked, Users, Megaphone,
-  HardDrive, Download, Newspaper, ScanLine
+  HardDrive, Download, Newspaper, ScanLine,
+  Target
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../../store/useAuthStore';
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { user, logout } = useAuthStore();
   
   const isStudent = user?.role === 'STUDENT';
   const isHOD = user?.role === 'HOD';
   const isAdmin = user?.role === 'ADMIN';
+  const isFaculty = user?.role === 'FACULTY';
 
   const menuItems = [
     // Core
@@ -25,8 +32,8 @@ const Sidebar: React.FC = () => {
     { icon: LayoutDashboard, label: 'Portal', path: '/portal', show: isStudent },
     
     // Learning Tools
-    { icon: BookOpen, label: 'Note Synthesis', path: '/notes', show: true },
-    { icon: Video, label: 'Soft Skills', path: '/soft-skills', show: true },
+    { icon: BookOpen, label: 'Note Synthesis', path: '/notes', show: isStudent || isFaculty },
+    { icon: Video, label: 'Soft Skills', path: '/soft-skills', show: isStudent },
     { icon: Coffee, label: 'Study Lounges', path: '/study-lounges', show: isStudent },
     { icon: Brain, label: 'Peer Tutoring', path: '/tutoring', show: isStudent },
     { icon: Award, label: 'Skill Badges', path: '/badges', show: isStudent },
@@ -34,37 +41,49 @@ const Sidebar: React.FC = () => {
     { icon: GraduationCap, label: 'Grades', path: '/grades', show: isStudent },
     
     // Academic Management
-    { icon: QrCode, label: 'Attendance', path: '/attendance', show: !isStudent },
+    { icon: QrCode, label: 'Class Attendance', path: '/attendance', show: isFaculty || isHOD },
     { icon: ScanLine, label: 'Mark Attendance', path: '/mark-attendance', show: isStudent },
-    { icon: FileText, label: 'Projects', path: '/projects', show: true },
-    { icon: Calendar, label: 'Schedule', path: '/schedule', show: true },
+    { icon: BookOpen, label: 'My Classes', path: '/classes', show: isFaculty || isHOD || isStudent },
+    { icon: FileText, label: 'Projects & Tasks', path: '/projects', show: isStudent || isFaculty || isHOD },
+    { icon: Target, label: 'Assignments', path: '/assignments', show: true },
+    { icon: Calendar, label: 'Schedule', path: '/schedule', show: isStudent || isFaculty || isHOD },
     { icon: BarChart2, label: 'Leaderboard', path: '/leaderboard', show: true },
     
     // Utilities
-    { icon: Timer, label: 'Task Breaker', path: '/task-breaker', show: true },
+    { icon: Timer, label: 'Task Breaker', path: '/task-breaker', show: isStudent },
     { icon: BookMarked, label: 'Book Swap', path: '/book-swap', show: isStudent },
     
     // Admin / HOD
     { icon: Database, label: 'User Mgmt', path: '/users', show: isHOD || isAdmin },
     { icon: BarChart2, label: 'Sentiment', path: '/sentiment', show: isHOD || isAdmin },
     { icon: MessageSquare, label: 'Global Chat', path: '/chat', show: true },
-    { icon: Megaphone, label: 'Broadcasts', path: '/broadcasts', show: isAdmin },
+    { icon: Megaphone, label: 'Broadcasts', path: '/broadcasts', show: isAdmin || isFaculty },
     { icon: Newspaper, label: 'Reports', path: '/college-reports', show: isHOD || isAdmin },
-    { icon: Users, label: 'Student DB', path: '/student-db', show: isHOD || isAdmin },
-    { icon: Users, label: 'Faculty Dir', path: '/faculty-dir', show: true },
+    { icon: Users, label: 'Student DB', path: '/student-db', show: isHOD || isAdmin || isFaculty },
+    { icon: Users, label: 'Faculty Dir', path: '/faculty-dir', show: isStudent || isHOD || isAdmin },
     { icon: HardDrive, label: 'DB Explorer', path: '/db-explorer', show: isAdmin },
     { icon: Download, label: 'Bulk Export', path: '/bulk-export', show: isAdmin },
     
     // Settings
-    { icon: Settings, label: 'Settings', path: '/settings', show: true },
+    { icon: Settings, label: 'Settings', path: '/settings', show: isAdmin },
   ];
 
   return (
-    <motion.aside 
-      initial={{ x: -100, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      className="w-72 glass border-r border-white/10 flex flex-col h-screen sticky top-0 z-50 overflow-hidden"
-    >
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+      <aside 
+        className={`fixed lg:sticky top-0 left-0 w-72 glass border-r border-white/10 flex flex-col h-screen z-50 overflow-hidden transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+      >
       {/* Logo Section */}
       <div className="p-8 pb-6">
         <div className="flex items-center gap-3 group cursor-pointer">
@@ -123,7 +142,8 @@ const Sidebar: React.FC = () => {
           <span className="text-sm font-bold uppercase tracking-widest">Sign Out</span>
         </button>
       </div>
-    </motion.aside>
+      </aside>
+    </>
   );
 };
 

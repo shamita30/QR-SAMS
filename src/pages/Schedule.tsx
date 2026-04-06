@@ -48,18 +48,18 @@ const Schedule: React.FC = () => {
 
   return (
     <div className="space-y-6 h-full flex flex-col">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
             <CalendarIcon className="text-primary" /> Sentinel Dispatch
           </h1>
-          <p className="text-white/50">Your hyper-orchestrated academic calendar</p>
+          <p className="text-sm text-white/50">Your hyper-orchestrated academic calendar</p>
         </div>
-        <div className="flex gap-3">
-           <button className="btn-secondary">
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+           <button className="flex-1 lg:flex-none btn-secondary">
              <Filter size={18} /> Viewport
            </button>
-           <button onClick={() => setShowAddEvent(true)} className="btn-primary">
+           <button onClick={() => setShowAddEvent(true)} className="flex-1 lg:flex-none btn-primary">
              <Plus size={18} /> Add Event
            </button>
         </div>
@@ -67,26 +67,26 @@ const Schedule: React.FC = () => {
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3 glass-card flex flex-col p-8">
-           <div className="flex items-center justify-between mb-8">
+           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 md:mb-8">
              <div className="flex items-center gap-4">
-               <h2 className="text-2xl font-bold italic tracking-tight underline decoration-primary decoration-4">March 2026</h2>
+               <h2 className="text-xl md:text-2xl font-bold italic tracking-tight underline decoration-primary decoration-4">March 2026</h2>
                <div className="flex gap-1">
                  <button className="w-8 h-8 glass rounded-lg flex items-center justify-center hover:bg-white/10"><ChevronLeft size={16} /></button>
                  <button className="w-8 h-8 glass rounded-lg flex items-center justify-center hover:bg-white/10"><ChevronRight size={16} /></button>
                </div>
              </div>
-             <div className="flex gap-1 p-1 bg-white/5 rounded-xl border border-white/10">
+             <div className="flex gap-1 p-1 bg-white/5 rounded-xl border border-white/10 w-full md:w-auto overflow-x-auto no-scrollbar">
                 {['Day', 'Week', 'Month'].map(v => (
-                  <button key={v} className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${v === 'Week' ? 'bg-primary text-white' : 'text-white/40 hover:text-white'}`}>{v}</button>
+                  <button key={v} className={`flex-1 md:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${v === 'Week' ? 'bg-primary text-white' : 'text-white/40 hover:text-white'}`}>{v}</button>
                 ))}
              </div>
            </div>
 
-           <div className="flex-1 grid grid-cols-7 gap-4">
-             {days.map(d => <div key={d} className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-2">{d}</div>)}
+           <div className="flex-1 grid grid-cols-7 gap-2 md:gap-4 overflow-x-auto no-scrollbar">
+             {days.map(d => <div key={d} className="text-center text-[8px] md:text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 mb-2">{d}</div>)}
              {Array.from({ length: 35 }).map((_, i) => (
-                <div key={i} className={`aspect-square glass rounded-2xl p-3 border border-white/5 group relative hover:border-primary/40 transition-all cursor-pointer ${i + 1 === 17 ? 'ring-2 ring-primary ring-offset-4 ring-offset-[#050505]' : 'opacity-40'}`}>
-                   <span className={`text-sm font-bold ${i + 1 === 17 ? 'text-primary' : ''}`}>{i + 1}</span>
+                <div key={i} className={`aspect-square glass rounded-xl md:rounded-2xl p-1 md:p-3 border border-white/5 group relative hover:border-primary/40 transition-all cursor-pointer ${i + 1 === 17 ? 'ring-1 md:ring-2 ring-primary ring-offset-2 md:ring-offset-4 ring-offset-[#050505]' : 'opacity-40'}`}>
+                   <span className={`text-xs md:text-sm font-bold ${i + 1 === 17 ? 'text-primary' : ''}`}>{i + 1}</span>
                    {i + 1 === 17 && (
                      <div className="mt-2 space-y-1">
                         <div className="h-1 bg-primary rounded-full w-3/4 shadow-[0_0_5px_#8b5cf6]" />
@@ -146,14 +146,14 @@ const Schedule: React.FC = () => {
         {showAddEvent && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowAddEvent(false)} />
-             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="relative w-full max-w-lg glass p-8 rounded-3xl space-y-6">
-                <h2 className="text-2xl font-bold italic tracking-tighter">Schedule Synchronization</h2>
+             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} className="relative w-full max-w-lg glass p-6 md:p-8 rounded-3xl space-y-4 md:space-y-6 max-h-[90vh] overflow-y-auto no-scrollbar">
+                <h2 className="text-xl md:text-2xl font-bold italic tracking-tighter">Schedule Synchronization</h2>
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Event Subject</label>
                     <input value={newEvent.title} onChange={e => setNewEvent({...newEvent, title: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:border-primary/50" placeholder="e.g. Logic Circuit Seminar" />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Date</label>
                       <input type="date" value={newEvent.date} onChange={e => setNewEvent({...newEvent, date: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:border-primary/50" />

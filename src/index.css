@@ -43,11 +43,11 @@ h1, h2, h3, h4, .font-outfit {
   }
 
   .btn-primary {
-    @apply px-6 py-2.5 bg-gradient-to-r from-primary to-accent hover:from-primary-hover hover:to-accent-hover text-white rounded-xl font-semibold transition-all duration-300 active:scale-95 shadow-lg shadow-primary/20 flex items-center justify-center gap-2;
+    @apply px-5 py-3 md:px-6 md:py-2.5 bg-gradient-to-r from-primary to-accent hover:from-primary-hover hover:to-accent-hover text-white rounded-xl font-semibold transition-all duration-300 active:scale-95 shadow-lg shadow-primary/20 flex items-center justify-center gap-2;
   }
 
   .btn-secondary {
-    @apply px-6 py-2.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2;
+    @apply px-5 py-3 md:px-6 md:py-2.5 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2;
   }
 
   .input-field {

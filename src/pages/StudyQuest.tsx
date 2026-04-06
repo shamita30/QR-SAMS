@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Compass, Target, Rocket, 
   Lock, CheckCircle2,
-  Gift, Zap, Star, Brain, X, Sparkles, Activity
+  Gift, Zap, Star, Brain, X, Sparkles, Activity, ChevronRight
 } from 'lucide-react';
+import { useAuthStore } from '../store/useAuthStore';
+import { useToastStore } from '../store/useToastStore';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import GlassCard from '../components/ui/GlassCard';
 import NeonButton from '../components/ui/NeonButton';
@@ -11,14 +14,66 @@ import NeonButton from '../components/ui/NeonButton';
 const StudyQuest: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [showShop, setShowShop] = useState(false);
+  const [activeOverlay, setActiveOverlay] = useState<'NONE' | 'LEARN' | 'QUIZ' | 'DOUBT'>('NONE');
+  const [userStats, setUserStats] = useState({ xp: 0, streak: 0 });
+  const [nodeStatus, setNodeStatus] = useState<Record<number, string>>({});
+  const { user } = useAuthStore();
+  const { addToast } = useToastStore();
+
+  const fetchStats = async () => {
+    if (!user) return;
+    try {
+      const sRes = await fetch(`http://localhost:3001/api/user/stats/${user.id}`);
+      const pRes = await fetch(`http://localhost:3001/api/study-quest/progress/${user.id}`);
+      if (sRes.ok) setUserStats(await sRes.ok ? await sRes.json() : { xp: 0, streak: 0 });
+      if (pRes.ok) {
+        const progress = await pRes.json();
+        const statusMap: Record<number, string> = { 1: 'ACTIVE' }; // Default first node
+        progress.forEach((p: any) => {
+          statusMap[p.node_id] = p.status;
+          if (p.status === 'COMPLETED' && !statusMap[p.node_id + 1]) {
+            statusMap[p.node_id + 1] = 'ACTIVE';
+          }
+        });
+        setNodeStatus(statusMap);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, [user]);
+
+  const handleCompleteNode = async (nodeId: number) => {
+    if (!user) return;
+    try {
+      const res = await fetch('http://localhost:3001/api/study-quest/complete-node', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, nodeId, xp: 250 })
+      });
+      if (res.ok) {
+        addToast('Sector Synchronized! +250 XP earned.', 'SUCCESS');
+        setActiveOverlay('NONE');
+        setSelectedNode(null);
+        fetchStats();
+      }
+    } catch (e) {
+      addToast('Data transmission error.', 'ERROR');
+    }
+  };
+
 
   const questPath = [
-    { id: 1, label: 'The Gates', icon: Target, status: 'COMPLETED', pos: { x: 10, y: 50 }, topic: 'Core Protocols' },
-    { id: 2, label: 'Syntax Valley', icon: Brain, status: 'COMPLETED', pos: { x: 30, y: 30 }, topic: 'Memory Vectors' },
-    { id: 3, label: 'The Nexus', icon: Zap, status: 'ACTIVE', pos: { x: 50, y: 50 }, topic: 'Distributed Sync' },
-    { id: 4, label: 'Echo Peak', icon: Compass, status: 'LOCKED', pos: { x: 70, y: 70 }, topic: 'Security Shards' },
-    { id: 5, label: 'The Citadel', icon: Rocket, status: 'LOCKED', pos: { x: 90, y: 50 }, topic: 'Final Integration' },
+    { id: 1, label: 'The Gates', icon: Target, status: nodeStatus[1] || 'ACTIVE', pos: { x: 10, y: 50 }, topic: 'Core Protocols' },
+    { id: 2, label: 'Syntax Valley', icon: Brain, status: nodeStatus[2] || 'LOCKED', pos: { x: 30, y: 30 }, topic: 'Memory Vectors' },
+    { id: 3, label: 'The Nexus', icon: Zap, status: nodeStatus[3] || 'LOCKED', pos: { x: 50, y: 50 }, topic: 'Distributed Sync' },
+    { id: 4, label: 'Echo Peak', icon: Compass, status: nodeStatus[4] || 'LOCKED', pos: { x: 70, y: 70 }, topic: 'Security Shards' },
+    { id: 5, label: 'The Citadel', icon: Rocket, status: nodeStatus[5] || 'LOCKED', pos: { x: 90, y: 50 }, topic: 'Final Integration' },
   ];
+
 
   return (
     <div className="h-full flex flex-col space-y-8 pb-12">
@@ -43,10 +98,19 @@ const StudyQuest: React.FC = () => {
           <GlassCard hover={false} className="py-2 px-6 border-accent/20 bg-accent/5 flex items-center gap-3">
               <Star size={20} fill="currentColor" className="text-accent" />
               <div>
-                 <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest leading-none mb-1">XP Balance</p>
-                 <p className="text-lg font-bold text-white leading-none">2,850</p>
+                 <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest leading-none mb-1">Global XP</p>
+                 <p className="text-lg font-bold text-white leading-none">{userStats.xp.toLocaleString()}</p>
               </div>
            </GlassCard>
+           
+           <GlassCard hover={false} className="py-2 px-6 border-primary/20 bg-primary/5 flex items-center gap-3">
+              <Zap size={20} fill="currentColor" className="text-primary" />
+              <div>
+                 <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest leading-none mb-1">Streak</p>
+                 <p className="text-lg font-bold text-white leading-none">{userStats.streak} Days</p>
+              </div>
+           </GlassCard>
+
         </div>
       </div>
 
@@ -163,9 +227,16 @@ const StudyQuest: React.FC = () => {
                       </div>
                    </div>
                    
-                   <div className="flex gap-4">
-                      <NeonButton className="flex-1 py-4 uppercase tracking-[0.2em] text-xs" onClick={() => setSelectedNode(null)}>
-                         {selectedNode.status === 'COMPLETED' ? 'Review Segment' : 'Initiate Challenge'}
+                    <div className="flex gap-4">
+                      <NeonButton className="flex-1 py-4 uppercase tracking-[0.2em] text-xs" onClick={() => {
+                        if (selectedNode.status === 'COMPLETED') {
+                          addToast('Reviewing archival data...', 'INFO');
+                          setActiveOverlay('LEARN');
+                        } else {
+                          setActiveOverlay('LEARN');
+                        }
+                      }}>
+                         {selectedNode.status === 'COMPLETED' ? 'Review Segment' : 'Initiate Training Sequence'}
                       </NeonButton>
                       <button onClick={() => setSelectedNode(null)} className="p-4 glass rounded-2xl text-white/40 hover:text-white transition-all">
                          <X size={20} />
@@ -176,6 +247,113 @@ const StudyQuest: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Challenge/Learn Overlay */}
+      <AnimatePresence>
+        {activeOverlay !== 'NONE' && selectedNode && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-background/90 backdrop-blur-3xl" />
+             <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative w-full max-w-2xl glass p-12 rounded-[3.5rem] border-primary/20 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
+                
+                {activeOverlay === 'LEARN' && (
+                  <div className="space-y-6">
+                    <div className="text-center mb-8">
+                       <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-accent border border-accent/20">
+                          <Brain size={32} />
+                       </div>
+                       <h2 className="text-2xl font-bold uppercase tracking-widest font-outfit">Learning Nexus: {selectedNode.topic}</h2>
+                       <p className="text-white/40 text-[10px] uppercase font-bold mt-2 tracking-[0.2em]">{selectedNode.label} Protocol Initialization</p>
+                    </div>
+                    
+                    <div className="glass p-8 rounded-[2rem] border-white/5 bg-white/[0.02] space-y-6">
+                       <p className="text-white/80 leading-relaxed text-sm">
+                         Welcome to the {selectedNode.topic} sector. In this module, you will learn how the Sentinel protocol handles distributed logic across the campus grid. 
+                         The system automatically shards data across micro-nodes to ensure 99.9% uptime during peak loads.
+                       </p>
+                       <div className="p-4 bg-primary/10 border border-primary/20 rounded-xl space-y-2">
+                          <h4 className="font-bold text-primary text-xs uppercase tracking-widest">Key Takeaway</h4>
+                          <p className="text-sm">Never bypass the primary cryptographic handshake. It is the core of the vector sync process.</p>
+                       </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                       <NeonButton onClick={() => setActiveOverlay('QUIZ')} className="flex-1 py-4 uppercase tracking-[0.2em] text-xs border-accent text-accent">
+                          Proceed to Assessment
+                       </NeonButton>
+                       <button onClick={() => setActiveOverlay('NONE')} className="px-8 glass rounded-2xl text-xs font-bold uppercase tracking-widest text-white/30 hover:text-white transition-colors">
+                          Abort Unit
+                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {activeOverlay === 'QUIZ' && (
+                  <div className="space-y-8">
+                    <div className="text-center mb-10">
+                       <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-primary border border-primary/20">
+                          <Sparkles size={32} />
+                       </div>
+                       <h2 className="text-2xl font-bold uppercase tracking-widest font-outfit">Sychronization Protocol</h2>
+                       <p className="text-white/40 text-[10px] uppercase font-bold mt-2 tracking-[0.2em]">Confirm neural alignment for {selectedNode.label}</p>
+                    </div>
+
+                    <div className="glass p-8 rounded-[2rem] border-white/5 bg-white/[0.02]">
+                       <h3 className="text-lg font-medium mb-6">Which cryptographic principle ensures the integrity of the {selectedNode.topic} sector?</h3>
+                       <div className="grid grid-cols-1 gap-4">
+                         {[
+                           'Symmetric Sharding',
+                           'Neural Hashing',
+                           'Asymmetric Protocol',
+                           'Distributed Validation'
+                         ].map((opt, i) => (
+                           <button 
+                             key={i} 
+                             onClick={() => {
+                               if (i === 1) handleCompleteNode(selectedNode.id);
+                               else addToast('Incorrect synchronization. Read the theory carefully.', 'ERROR');
+                             }}
+                             className="w-full text-left p-4 rounded-2xl border border-white/5 bg-white/5 hover:bg-primary/20 hover:border-primary/40 transition-all group"
+                           >
+                             <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">{opt}</span>
+                                <ChevronRight size={16} className="text-white/10 group-hover:text-primary transition-colors" />
+                             </div>
+                           </button>
+                         ))}
+                       </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                       <button onClick={() => setActiveOverlay('DOUBT')} className="flex-1 py-4 glass text-xs font-bold uppercase tracking-[0.2em] text-white/60 hover:text-primary transition-colors border-white/10">
+                          Ask Doubts (AI Tutor)
+                       </button>
+                       <button onClick={() => setActiveOverlay('NONE')} className="px-8 py-4 text-[10px] font-bold uppercase tracking-[0.4em] text-white/20 hover:text-white transition-colors">
+                         Abort Sync
+                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {activeOverlay === 'DOUBT' && (
+                  <div className="space-y-6">
+                    <div className="text-center mb-6">
+                       <h2 className="text-xl font-bold uppercase tracking-widest">Neural Tutor</h2>
+                       <p className="text-primary text-[10px] uppercase font-bold mt-1 tracking-[0.2em]">Real-time assistance</p>
+                    </div>
+                    <div className="p-6 bg-white/5 rounded-2xl border border-white/10 min-h-[150px] text-sm text-white/70 italic">
+                      "I see you're struggling with the ${selectedNode.topic} challenge. Remember the 'Key Takeaway' from the lesson! The correct answer involves 'Hashing' the neural vectors. Would you like to try the quiz again?"
+                    </div>
+                    <NeonButton onClick={() => setActiveOverlay('QUIZ')} className="w-full py-4 text-xs tracking-widest uppercase">
+                       Retake Challenge
+                    </NeonButton>
+                  </div>
+                )}
+
+             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
 
       {/* Perks Shop Slide-out */}
       <AnimatePresence>

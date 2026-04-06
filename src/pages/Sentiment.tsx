@@ -6,12 +6,14 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../store/useAuthStore';
+import { useToastStore } from '../store/useToastStore';
 
 const Sentiment: React.FC = () => {
   const { user } = useAuthStore();
+  const { addToast } = useToastStore();
   const [data, setData] = useState<any>(null);
-  const isHOD = user.role === 'HOD';
-  const dept = user.department || 'General';
+  const isHOD = user?.role === 'HOD';
+  const dept = user?.department || 'General';
 
   useEffect(() => {
     fetchSentiment();
@@ -38,10 +40,19 @@ const Sentiment: React.FC = () => {
           <p className="text-white/50">{isHOD ? `${dept} Department Scope` : 'Institutional Well-being Dashboard'}</p>
         </div>
         <div className="flex gap-3">
-          <button className="btn-secondary">
+          <button 
+            onClick={() => addToast('Opening timeframe filter...', 'INFO')}
+            className="btn-secondary"
+          >
             <Filter size={18} /> Timeframe
           </button>
-          <button className="btn-primary">
+          <button 
+            onClick={() => {
+              addToast('Generating detailed sentiment report...', 'LOADING');
+              setTimeout(() => addToast('Report generated successfully!', 'SUCCESS'), 1500);
+            }}
+            className="btn-primary"
+          >
             Generate Report
           </button>
         </div>

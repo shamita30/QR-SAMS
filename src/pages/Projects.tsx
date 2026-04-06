@@ -29,8 +29,8 @@ const Projects: React.FC = () => {
   const fetchProjects = async () => {
     try {
       const url = isStudent 
-        ? `http://localhost:3001/api/projects?studentId=${user.id}`
-        : `http://localhost:3001/api/projects?department=${user.department}`;
+        ? `/api/projects?studentId=${user?.id}`
+        : `/api/projects?department=${user?.department}`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -145,15 +145,15 @@ const Projects: React.FC = () => {
                     onClick={async () => {
                       setIsSubmitting(true);
                       try {
-                        const res = await fetch('http://localhost:3001/api/projects', {
+                        const res = await fetch('/api/projects', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
                             id: selectedProject?.id,
                             title: proposalTitle,
                             description: proposalAbstract,
-                            studentId: user.id,
-                            department: user.department || 'General',
+                            studentId: user?.id,
+                            department: user?.department || 'General',
                             status: selectedProject?.status || 'PROPOSAL',
                             proposal: proposalAbstract,
                             code: code
@@ -213,7 +213,7 @@ const Projects: React.FC = () => {
                     <button 
                       onClick={async () => {
                         try {
-                          const res = await fetch('http://localhost:3001/api/projects', {
+                          const res = await fetch('/api/projects', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ ...selectedProject, status: 'APPROVED' })
@@ -240,7 +240,7 @@ const Projects: React.FC = () => {
                         grade: Math.floor(Math.random() * 30) + 70
                       }));
                       try {
-                        const res = await fetch('http://localhost:3001/api/projects/bulk-update', {
+                        const res = await fetch('/api/projects/bulk-update', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ updates: mockUpdates })

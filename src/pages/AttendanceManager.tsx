@@ -4,18 +4,15 @@ import {
   QrCode, Square, Play, CheckCircle, Wifi, UserCheck, AlertCircle, BarChart, Copy, RefreshCw
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from '../store/useAuthStore';
+import { useToastStore } from '../store/useToastStore';
 
-interface LiveRecord {
-  studentId: string;
-  studentName: string;
-  department: string;
-  timestamp: string;
-}
+
 
 const AttendanceManager: React.FC = () => {
   const { user } = useAuthStore();
+  const { addToast } = useToastStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [courses, setCourses] = useState<any[]>([]);
 
@@ -32,7 +29,7 @@ const AttendanceManager: React.FC = () => {
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const isHOD = user?.role === 'HOD';
-  const isAdmin = user?.role === 'ADMIN';
+
   const isFaculty = user?.role === 'FACULTY';
   const dept = user?.department;
 
@@ -59,7 +56,10 @@ const AttendanceManager: React.FC = () => {
 
   const connectWebSocket = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.hostname}:3001`);
+    const wsUrl = window.location.port === '3000' 
+      ? `${protocol}//${window.location.hostname}:3001`
+      : `${protocol}//${window.location.host}`;
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -124,22 +124,28 @@ const AttendanceManager: React.FC = () => {
         startRefreshTimer(data.sessionId);
         // Fetch any existing records for this session
         fetchSessionRecords(data.sessionId);
+        addToast(`QR Session Started for ${courseId}`, 'SUCCESS');
+      } else {
+        addToast('Failed to start session', 'ERROR');
       }
     } catch (e) {
       console.error('Failed to start session:', e);
+      addToast('Network error starting session', 'ERROR');
     }
   };
 
   const stopSession = async () => {
     if (!activeSessionId) return;
     try {
-      await fetch('http://localhost:3001/api/attendance/session/stop', {
+      const res = await fetch('http://localhost:3001/api/attendance/session/stop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: activeSessionId })
       });
+      if (res.ok) addToast('QR Session stopped successfully', 'INFO');
     } catch (e) {
       console.error('Failed to stop session:', e);
+      addToast('Failed to stop session', 'ERROR');
     }
     setActiveSessionId(null);
     setActiveSessionCourseId(null);
@@ -161,6 +167,9 @@ const AttendanceManager: React.FC = () => {
         const data = await res.json();
         setSessionToken(data.token);
         setCountdown(30);
+        addToast('Dynamic token refreshed', 'INFO');
+      } else {
+        addToast('Failed to refresh token', 'ERROR');
       }
     } catch (e) {
       console.error('Failed to refresh token:', e);
@@ -206,6 +215,7 @@ const AttendanceManager: React.FC = () => {
 
   const copyLink = () => {
     navigator.clipboard.writeText(markUrl);
+    addToast('Attendance link copied to clipboard', 'SUCCESS');
   };
 
   const filteredCourses = courses.filter(c => 
@@ -225,7 +235,10 @@ const AttendanceManager: React.FC = () => {
           <p className="text-white/50">{isHOD ? `${dept} Department Overview` : 'Manage your class rosters'}</p>
         </div>
         <div className="flex gap-3">
-          <button className="btn-secondary">
+          <button 
+            onClick={() => addToast('History logs loaded', 'INFO')}
+            className="btn-secondary"
+          >
             <Calendar size={18} /> History
           </button>
         </div>

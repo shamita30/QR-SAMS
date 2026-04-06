@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageSquare, X, Send, Smile, Info } from 'lucide-react';
+import { MessageSquare, X, Send } from 'lucide-react';
 import { User } from '../types';
 
 interface GlobalChatWidgetProps {

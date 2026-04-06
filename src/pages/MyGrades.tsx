@@ -1,17 +1,47 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Trophy, BookOpen, Star, Target,
-  TrendingUp, Download, PieChart, Award
+  TrendingUp, Download, Award, ChevronRight
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { useAuthStore } from '../store/useAuthStore';
 
 const MyGrades: React.FC = () => {
-  const grades = [
-    { subject: 'Cloud Computing', grade: 'A', gpa: 9.2, credits: 4, trend: '+0.4', color: '#8b5cf6' },
-    { subject: 'Database Systems', grade: 'A+', gpa: 9.8, credits: 4, trend: '+0.2', color: '#10b981' },
-    { subject: 'Web Development', grade: 'B+', gpa: 8.5, credits: 3, trend: '-0.1', color: '#ec4899' },
-    { subject: 'Operating Systems', grade: 'A', gpa: 9.0, credits: 4, trend: '+0.5', color: '#fbbf24' },
+  const { user } = useAuthStore();
+  const [liveProjects, setLiveProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetch(`/api/projects?studentId=${user.id}`)
+        .then(r => r.json())
+        .then(data => {
+          setLiveProjects(Array.isArray(data) ? data : []);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+    }
+  }, [user]);
+
+  const sgpa = liveProjects.length > 0 
+    ? (liveProjects.reduce((acc, p) => acc + (p.grade || 0), 0) / liveProjects.length / 10).toFixed(2)
+    : "8.42"; // default
+
+  const totalCredits = liveProjects.length * 4;
+
+  const colors = ['#8b5cf6', '#10b981', '#ec4899', '#fbbf24'];
+
+  const gpaTrendData = [
+    { semester: 'Sem I', gpa: 7.8 },
+    { semester: 'Sem II', gpa: 8.1 },
+    { semester: 'Sem III', gpa: 8.0 },
+    { semester: 'Sem IV', gpa: 8.5 },
+    { semester: 'Sem V', gpa: 8.9 },
+    { semester: 'Sem VI', gpa: 9.1 },
+    { semester: 'Sem VII', gpa: parseFloat(sgpa) || 8.42 }
   ];
+
+  if (loading) return <div className="p-8 text-center text-white/50 animate-pulse">Loading Transcript...</div>;
 
   return (
     <div className="space-y-8">
@@ -29,8 +59,8 @@ const MyGrades: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Current SGPA', val: '9.12', icon: Star, color: '#8b5cf6' },
-          { label: 'Total Credits', val: '24', icon: BookOpen, color: '#10b981' },
+          { label: 'Current SGPA', val: sgpa, icon: Star, color: '#8b5cf6' },
+          { label: 'Total Credits', val: String(totalCredits || 24), icon: BookOpen, color: '#10b981' },
           { label: 'Class Rank', val: '12', icon: Target, color: '#ec4899' },
           { label: 'Skills XP', val: '5,420', icon: Award, color: '#fbbf24' },
         ].map(stat => (
@@ -54,53 +84,62 @@ const MyGrades: React.FC = () => {
             <table className="w-full text-left">
               <thead className="bg-white/5 text-[10px] font-bold uppercase tracking-widest text-white/40">
                 <tr>
-                  <th className="px-6 py-4">Subject</th>
-                  <th className="px-6 py-4">Credits</th>
+                  <th className="px-6 py-4">Title</th>
+                  <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4">Grade</th>
-                  <th className="px-6 py-4">GPA</th>
+                  <th className="px-6 py-4">Score</th>
                   <th className="px-6 py-4 text-right">Trend</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {grades.map((g, idx) => (
+                {liveProjects.length > 0 ? liveProjects.map((p, idx) => (
                   <tr key={idx} className="group hover:bg-white/5 transition-colors">
                     <td className="px-6 py-5">
-                       <span className="font-bold text-sm block">{g.subject}</span>
+                       <span className="font-bold text-sm block">{p.title}</span>
                     </td>
-                    <td className="px-6 py-5 text-sm text-white/60">{g.credits}</td>
+                    <td className="px-6 py-5 text-sm text-white/60 uppercase">{p.status}</td>
                     <td className="px-6 py-5">
-                       <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 font-bold text-xs" style={{ color: g.color }}>{g.grade}</span>
+                       <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 font-bold text-xs" style={{ color: colors[idx % colors.length] }}>
+                         {p.grade && p.grade >= 90 ? 'A+' : p.grade && p.grade >= 80 ? 'A' : p.grade ? 'B' : 'N/A'}
+                       </span>
                     </td>
-                    <td className="px-6 py-5 text-sm font-mono">{g.gpa}</td>
+                    <td className="px-6 py-5 text-sm font-mono">{p.grade ? (p.grade / 10).toFixed(1) : '-'}</td>
                     <td className="px-6 py-5 text-right">
-                       <span className={`text-xs font-bold ${g.trend.startsWith('+') ? 'text-accent' : 'text-red-500'}`}>
-                         {g.trend}
+                       <span className="text-xs font-bold text-accent">
+                         +0.2
                        </span>
                     </td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan={5} className="text-center py-8 text-white/30 italic">No project submissions graded yet.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="glass-card p-6 bg-gradient-to-br from-primary/15 to-transparent">
+          <div className="glass-card p-6 bg-gradient-to-br from-primary/15 to-transparent flex flex-col">
              <div className="flex items-center gap-3 mb-6">
-               <PieChart className="text-primary" size={20} />
-               <h3 className="font-bold">GPA Projection</h3>
+               <TrendingUp className="text-primary" size={20} />
+               <h3 className="font-bold">GPA Trajectory</h3>
              </div>
-             <div className="space-y-6">
-                <div>
-                   <div className="flex justify-between text-xs font-bold uppercase text-white/40 mb-2">
-                     <span>Estimated Sem VIII</span>
-                     <span>9.4 Peak</span>
-                   </div>
-                   <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                      <div className="h-full bg-primary w-3/4 rounded-full shadow-[0_0_10px_#8b5cf6]" />
-                   </div>
-                </div>
-                <p className="text-[10px] text-white/40 leading-relaxed italic">System predicts a 12% improvement in Core GPA if Cloud Computing labs are maintained at current engagement levels.</p>
+             
+             <div className="flex-1 w-full h-64 min-h-[250px] -ml-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={gpaTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                    <XAxis dataKey="semester" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} domain={['dataMin - 0.5', 'dataMax + 0.5']} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #3b82f640', borderRadius: '12px' }}
+                      itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }}
+                    />
+                    <Line type="stepAfter" dataKey="gpa" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: '#0f172a', stroke: '#3b82f6', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#3b82f6' }} />
+                  </LineChart>
+                </ResponsiveContainer>
              </div>
           </div>
 

@@ -30,9 +30,9 @@ const Tutoring: React.FC = () => {
       if (res.ok) setTutors(await res.json());
       else {
         setTutors([
-          { id: 't1', name: 'Dr. Sarah Chen', expert: 'Distributed Systems', rating: 4.9, sessions: 142, color: '#3b82f6' },
-          { id: 't2', name: 'James Wilson', expert: 'React Native Expert', rating: 4.8, sessions: 89, color: '#a855f7' },
-          { id: 't3', name: 'Elena Vance', expert: 'UX / Figma Pro', rating: 4.7, sessions: 56, color: '#00d2ff' },
+          { id: 't1', name: 'Dr. Sarah Chen', expert: 'Distributed Systems', rating: 4.9, sessions: 142, color: '#3b82f6', tags: ['Docker', 'K8s', 'AWS'] },
+          { id: 't2', name: 'James Wilson', expert: 'React Native Expert', rating: 4.8, sessions: 89, color: '#a855f7', tags: ['iOS', 'UI/UX', 'Hooks'] },
+          { id: 't3', name: 'Elena Vance', expert: 'UI/UX Pro', rating: 4.7, sessions: 56, color: '#00d2ff', tags: ['Figma', 'Prototyping', 'Design'] },
         ]);
       }
     } catch (e) {
@@ -162,38 +162,53 @@ const Tutoring: React.FC = () => {
       <AnimatePresence mode="wait">
         {activeTab === 'AVAIL_TUTORS' ? (
           <motion.div key="tutors" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tutors.map((tutor, i) => (
-              <GlassCard key={tutor.id} delay={i * 0.1} className="flex flex-col gap-6 relative group border-t-2 border-t-transparent hover:border-t-primary/50">
+            {(Array.isArray(tutors) ? tutors : []).map((tutor: any, i: number) => (
+              <GlassCard key={tutor.id} delay={i * 0.1} className="flex flex-col gap-6 relative group border border-white/5 hover:-translate-y-2 transition-all duration-300 shadow-xl hover:shadow-[0_0_40px_rgba(59,130,246,0.15)] overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-1" style={{ backgroundColor: tutor.color || '#3b82f6' }} />
+                
                 <div className="flex items-center gap-5">
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center font-outfit font-bold text-2xl border border-white/10 shadow-lg relative group-hover:scale-105 transition-transform" style={{ backgroundColor: `${tutor.color}15`, color: tutor.color }}>
-                    <div className="absolute inset-0 bg-white/5 animate-pulse rounded-2xl" />
-                    {tutor.name.charAt(0)}
+                  <div className="w-16 h-16 rounded-[1.5rem] flex items-center justify-center font-outfit font-bold text-2xl border-2 relative group-hover:scale-105 transition-transform shadow-[0_0_20px_rgba(0,0,0,0.5)] z-10" style={{ backgroundColor: `${tutor.color || '#3b82f6'}20`, borderColor: `${tutor.color || '#3b82f6'}40`, color: tutor.color || '#3b82f6' }}>
+                    <div className="absolute inset-0 bg-white/5 animate-pulse rounded-[1.5rem]" />
+                    {tutor.name ? tutor.name.charAt(0) : '?'}
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white group-hover:text-primary transition-colors uppercase tracking-tight">{tutor.name}</h3>
-                    <p className="text-[10px] text-white/30 uppercase tracking-[0.3em] font-bold">{tutor.expert}</p>
+                  <div className="z-10">
+                    <h3 className="text-xl font-bold text-white group-hover:text-primary transition-colors uppercase tracking-tight leading-tight">{tutor.name || 'Unknown Tutor'}</h3>
+                    <p className="text-[10px] uppercase tracking-[0.3em] font-bold mt-1" style={{ color: tutor.color || '#3b82f6' }}>{tutor.expert || 'General'}</p>
                   </div>
                 </div>
                 
-                <div className="flex justify-between p-4 bg-white/2 rounded-2xl text-center border border-white/5">
+                {tutor.tags && (
+                  <div className="flex flex-wrap gap-2 z-10">
+                    {tutor.tags.map((tag: string) => (
+                      <span key={tag} className="px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-white/10" style={{ backgroundColor: `${tutor.color}10`, color: tutor.color }}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="flex justify-between p-4 rounded-2xl text-center border z-10" style={{ backgroundColor: `${tutor.color}05`, borderColor: `${tutor.color}15` }}>
                   <div>
-                    <p className="text-[9px] text-white/20 font-bold uppercase tracking-widest mb-1">Elite Rating</p>
-                    <div className="flex items-center gap-1.5 text-accent justify-center">
-                      <Star size={14} fill="currentColor" className="drop-shadow-[0_0_5px_rgba(0,210,255,0.4)]" />
+                    <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest mb-1">Elite Rating</p>
+                    <div className="flex items-center gap-1.5 justify-center" style={{ color: tutor.color }}>
+                      <Star size={14} fill="currentColor" className="drop-shadow-[0_0_5px_currentColor]" />
                       <span className="text-base font-bold text-white">{tutor.rating}</span>
                     </div>
                   </div>
-                  <div className="w-px h-10 bg-white/10 self-center" />
+                  <div className="w-px h-10 border-l border-dashed self-center" style={{ borderColor: `${tutor.color}30` }} />
                   <div>
-                     <p className="text-[9px] text-white/20 font-bold uppercase tracking-widest mb-1">Sync Sessions</p>
+                     <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest mb-1">Sync Sessions</p>
                      <p className="text-base font-bold text-white">{tutor.sessions}</p>
                   </div>
                 </div>
 
-                <div className="flex gap-3 mt-2">
-                  <NeonButton className="flex-1 py-3 text-[10px] uppercase tracking-widest">Reserve Sync</NeonButton>
-                  <button className="w-12 h-12 glass rounded-xl flex items-center justify-center hover:bg-white/10 transition-all text-white/20 hover:text-white">
-                    <MessageSquare size={20} />
+                <div className="flex gap-3 mt-auto z-10">
+                  <NeonButton className="flex-1 py-3 text-[10px] uppercase tracking-widest shadow-lg hover:scale-[1.02] active:scale-95 transition-transform" style={{ borderColor: tutor.color, color: tutor.color }}>
+                     Reserve Sync
+                  </NeonButton>
+                  <button className="w-12 h-12 rounded-xl flex items-center justify-center hover:bg-white/10 transition-all shadow-lg border relative overflow-hidden group" style={{ borderColor: `${tutor.color}30`, backgroundColor: `${tutor.color}10`, color: tutor.color }}>
+                    <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform" />
+                    <MessageSquare size={20} className="relative z-10" />
                   </button>
                 </div>
               </GlassCard>
@@ -211,7 +226,7 @@ const Tutoring: React.FC = () => {
               </button>
             </GlassCard>
 
-            {requests.map((req, i) => (
+            {(Array.isArray(requests) ? requests : []).map((req, i) => (
               <GlassCard key={req.id} delay={i * 0.05} className="p-6 border-white/5 flex flex-col md:flex-row items-center justify-between group hover:border-primary/40">
                 <div className="flex items-center gap-6 mb-4 md:mb-0">
                   <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center text-white/20 group-hover:bg-primary/10 group-hover:text-primary group-hover:border-primary/30 transition-all">

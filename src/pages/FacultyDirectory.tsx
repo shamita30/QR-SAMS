@@ -2,15 +2,17 @@ import React, { useState } from 'react';
 import { 
   Users, Search, Filter, Mail, 
   MessageSquare, Shield, Clock,
-  MoreVertical, ChevronRight, UserPlus,
-  BookOpen, Star, AlertCircle
+  ChevronRight, UserPlus,
+  BookOpen, Star
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '../store/useAuthStore';
+import { useToastStore } from '../store/useToastStore';
 
 const FacultyDirectory: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const { user } = useAuthStore();
+  const { addToast } = useToastStore();
   const isHOD = user?.role === 'HOD';
   const [workload, setWorkload] = useState<any[]>([]);
 
@@ -39,10 +41,16 @@ const FacultyDirectory: React.FC = () => {
           <p className="text-white/50">Official roster of mentors and academic leads</p>
         </div>
         <div className="flex gap-3">
-          <button className="btn-secondary">
+          <button 
+             onClick={() => addToast('Preparing global dispatch...', 'INFO')}
+             className="btn-secondary"
+          >
              <Mail size={18} /> Global Dispatch
           </button>
-          <button className="btn-primary">
+          <button 
+             onClick={() => addToast('Opening nomination form...', 'LOADING')}
+             className="btn-primary"
+          >
             <UserPlus size={18} /> Nominate Faculty
           </button>
         </div>
@@ -111,8 +119,18 @@ const FacultyDirectory: React.FC = () => {
                   <span className="text-[10px] text-white/20 uppercase tracking-widest ml-1">Ranked</span>
                </div>
                <div className="flex gap-2">
-                  <button className="p-2 glass rounded-lg text-white/40 hover:text-white transition-all"><MessageSquare size={16} /></button>
-                  <button className="p-2 glass rounded-lg text-white/40 hover:text-white transition-all"><ChevronRight size={16} /></button>
+                  <button 
+                     onClick={() => addToast(`Opening direct message to ${f.name}`, 'INFO')}
+                     className="p-2 glass rounded-lg text-white/40 hover:text-white transition-all"
+                  >
+                     <MessageSquare size={16} />
+                  </button>
+                  <button 
+                     onClick={() => addToast(`Opening full profile of ${f.name}`, 'LOADING')}
+                     className="p-2 glass rounded-lg text-white/40 hover:text-white transition-all"
+                  >
+                     <ChevronRight size={16} />
+                  </button>
                </div>
             </div>
 

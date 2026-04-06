@@ -1,15 +1,17 @@
 import React from 'react';
 import { 
-  Trophy, Star, Target, Users, 
+  Trophy, Target, 
   ChevronRight, Brain, Rocket, Clock,
   ArrowUpRight, Layout, Zap, Play,
   Download
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+
 import { useAuthStore } from '../store/useAuthStore';
+import { useToastStore } from '../store/useToastStore';
 
 const StudentPortal: React.FC = () => {
   const { user } = useAuthStore();
+  const { addToast } = useToastStore();
   const [insights, setInsights] = React.useState<any>(null);
 
   React.useEffect(() => {
@@ -22,7 +24,11 @@ const StudentPortal: React.FC = () => {
   }, [user]);
 
   const handleDownloadHistory = () => {
-    window.open(`http://localhost:3001/api/student/${user?.id}/export`, '_blank');
+    addToast('Downloading academic history...', 'LOADING');
+    setTimeout(() => {
+      window.open(`http://localhost:3001/api/student/${user?.id}/export`, '_blank');
+      addToast('Download started successfully!', 'SUCCESS');
+    }, 1000);
   };
   return (
     <div className="space-y-8">
@@ -114,7 +120,12 @@ const StudentPortal: React.FC = () => {
                           <span className="text-xs text-accent font-medium bg-accent/10 px-2 py-1 rounded">Due: {proj.submission_date}</span>
                         </div>
                         <div className="flex gap-4 mt-6">
-                          <button className="btn-primary flex items-center gap-2"><Clock size={16} /> Reminder Set</button>
+                          <button 
+                            onClick={() => addToast(`Reminder set for ${proj.title}`, 'SUCCESS')}
+                            className="btn-primary flex items-center gap-2"
+                          >
+                            <Clock size={16} /> Reminder Set
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -162,7 +173,10 @@ const StudentPortal: React.FC = () => {
               <div>
                 <p className="text-sm font-bold">Flashcard Sprint</p>
                 <p className="text-xs text-white/40 mt-1">Review 10 flashcards in Note Synthesis to earn 50 XP.</p>
-                <button className="mt-4 text-xs font-bold text-primary hover:underline flex items-center gap-1">
+                <button 
+                  onClick={() => addToast("Quest started! Let's go!", 'INFO')}
+                  className="mt-4 text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                >
                   Start Quest <ChevronRight size={14} />
                 </button>
               </div>

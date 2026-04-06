@@ -41,26 +41,41 @@ const SkillBadges: React.FC = () => {
     return true;
   });
 
-  const getIcon = (iconName: string, size: number = 24, color?: string) => {
-    const iconProps = { size, color };
-    switch (iconName) {
-      case 'Award': return <Award {...iconProps} />;
-      case 'Star': return <Star {...iconProps} />;
-      case 'Zap': return <Zap {...iconProps} />;
-      case 'Search': return <Search {...iconProps} />;
-      case 'ChevronRight': return <ChevronRight {...iconProps} />;
-      case 'Lock': return <Lock {...iconProps} />;
-      case 'CheckCircle2': return <CheckCircle2 {...iconProps} />;
-      case 'Shield': return <Shield {...iconProps} />;
-      case 'Trophy': return <Trophy {...iconProps} />;
-      case 'Flame': return <Flame {...iconProps} />;
-      case 'Sparkles': return <Sparkles {...iconProps} />;
-      case 'BookOpen': return <BookOpen {...iconProps} />;
-      case 'Cloud': return <Cloud {...iconProps} />;
-      case 'Code': return <Code {...iconProps} />;
-      case 'Brain': return <Brain {...iconProps} />;
-      default: return <Award {...iconProps} />;
-    }
+  const AnimatedBadgeGraphic = ({ iconName, size = 24, color = '#3b82f6' }: { iconName: string, size?: number, color?: string }) => {
+    const IconComponent = () => {
+      switch (iconName) {
+        case 'Award': return <Award size={size} color={color} />;
+        case 'Star': return <Star size={size} color={color} />;
+        case 'Zap': return <Zap size={size} color={color} />;
+        case 'Search': return <Search size={size} color={color} />;
+        case 'ChevronRight': return <ChevronRight size={size} color={color} />;
+        case 'Lock': return <Lock size={size} color={color} />;
+        case 'CheckCircle2': return <CheckCircle2 size={size} color={color} />;
+        case 'Shield': return <Shield size={size} color={color} />;
+        case 'Trophy': return <Trophy size={size} color={color} />;
+        case 'Flame': return <Flame size={size} color={color} />;
+        case 'Sparkles': return <Sparkles size={size} color={color} />;
+        case 'BookOpen': return <BookOpen size={size} color={color} />;
+        case 'Cloud': return <Cloud size={size} color={color} />;
+        case 'Code': return <Code size={size} color={color} />;
+        case 'Brain': return <Brain size={size} color={color} />;
+        default: return <Award size={size} color={color} />;
+      }
+    };
+
+    return (
+      <motion.div
+        animate={{ 
+          y: [0, -5, 0],
+          filter: [`drop-shadow(0px 0px 5px ${color}80)`, `drop-shadow(0px 0px 15px ${color})`, `drop-shadow(0px 0px 5px ${color}80)`]
+        }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+        className="relative"
+      >
+        <div className="absolute inset-0 blur-xl opacity-50" style={{ backgroundColor: color, transform: 'scale(1.2)' }} />
+        <IconComponent />
+      </motion.div>
+    );
   };
 
   const totalXp = badges.reduce((sum, badge) => sum + (badge.earned ? (badge.xp || 0) : 0), 0);
@@ -121,7 +136,7 @@ const SkillBadges: React.FC = () => {
               className="w-24 h-24 rounded-3xl mb-6 flex items-center justify-center border border-white/5 relative group-hover:scale-110 transition-transform duration-500"
               style={{ background: `radial-gradient(circle at center, ${badge.color}15 0%, transparent 70%)` }}
             >
-              {getIcon(badge.icon, 48, badge.color)}
+              <AnimatedBadgeGraphic iconName={badge.icon} size={48} color={badge.color} />
               {badge.earned && (
                 <motion.div 
                   initial={{ rotate: 0 }}
@@ -174,7 +189,7 @@ const SkillBadges: React.FC = () => {
                   style={{ background: `radial-gradient(circle at center, ${selectedBadge.color}20 0%, transparent 100%)`, borderColor: `${selectedBadge.color}30` }}
                 >
                    <div className="absolute inset-0 bg-white/5 animate-pulse rounded-[2.5rem]" />
-                   {getIcon(selectedBadge.icon, 64, selectedBadge.color)}
+                   <AnimatedBadgeGraphic iconName={selectedBadge.icon} size={64} color={selectedBadge.color} />
                 </div>
                 
                 <h2 className="text-3xl font-bold font-outfit uppercase tracking-tighter mb-2 italic">{selectedBadge.title}</h2>

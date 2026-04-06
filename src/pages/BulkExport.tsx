@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { 
   FileDown, Shield, Database, 
   CheckCircle2, Clock, AlertTriangle,
-  FileText, Table, FileCode, Search,
-  Filter, ChevronRight
+  FileText, Table, FileCode,
+  ChevronRight
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 

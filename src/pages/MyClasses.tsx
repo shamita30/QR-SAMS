@@ -1,32 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, Clock, Users, MapPin, 
   ExternalLink, Video, FileText, CheckCircle2,
-  Calendar, Search, Filter
+  Calendar, Search
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuthStore } from '../store/useAuthStore';
+import { useToastStore } from '../store/useToastStore';
 
 const MyClasses: React.FC = () => {
-  const classes = [
-    { 
-      id: 'CS301', 
-      title: 'Cloud Computing', 
-      instructor: 'Dr. Sarah Smith', 
-      time: '10:00 - 11:30', 
-      room: 'LH-04', 
-      attendance: 98,
-      nextTopic: 'AWS Lambda & Serverless'
-    },
-    { 
-      id: 'CS302', 
-      title: 'Database Systems', 
-      instructor: 'Prof. James Wilson', 
-      time: '13:00 - 14:30', 
-      room: 'LAB-02', 
-      attendance: 85,
-      nextTopic: 'B-Tree Indexing Optimization'
+  const { user } = useAuthStore();
+  const { addToast } = useToastStore();
+  const [classes, setClasses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let url = 'http://localhost:3001/api/courses';
+    if (user?.role === 'FACULTY') {
+      url += `?facultyId=${user.id}`;
+    } else if (user?.role === 'HOD') {
+      url += `?dept=${user.department}`;
     }
-  ];
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        setClasses(data);
+        setLoading(false);
+      })
+      .catch(e => {
+        console.error(e);
+        setLoading(false);
+        addToast('Failed to load courses', 'ERROR');
+      });
+  }, [user, addToast]);
+  if (loading) return <div className="p-8 text-center text-white/50 animate-pulse">Loading Classes...</div>;
 
   return (
     <div className="space-y-8">
@@ -38,10 +45,16 @@ const MyClasses: React.FC = () => {
           <p className="text-white/50">Manage your active semesters and classroom resources</p>
         </div>
         <div className="flex gap-3">
-          <button className="btn-secondary">
+          <button 
+            onClick={() => addToast('Timeline view loaded', 'INFO')}
+            className="btn-secondary"
+          >
              <Calendar size={18} /> Full Timeline
           </button>
-          <button className="btn-primary">
+          <button 
+            onClick={() => addToast('Connecting to Virtual Session...', 'LOADING')}
+            className="btn-primary"
+          >
             <Video size={18} /> Join Virtual Session
           </button>
         </div>
@@ -56,7 +69,10 @@ const MyClasses: React.FC = () => {
             <div className="w-px h-10 bg-white/10" />
             <div className="space-y-1">
                <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Enrollment Status</p>
-               <p className="text-lg font-bold flex items-center gap-2"><CheckCircle2 size={18} className="text-accent" /> VERIFIED</p>
+               <p className="text-lg font-bold flex items-center gap-2">
+                 <CheckCircle2 size={18} className={user?.role === 'STUDENT' ? "text-accent" : "text-primary"} /> 
+                 {user?.role === 'STUDENT' ? 'VERIFIED' : 'ACTIVE FACULTY'}
+               </p>
             </div>
          </div>
          <div className="relative">
@@ -66,7 +82,11 @@ const MyClasses: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {classes.map((cls, idx) => (
+        <AnimatePresence>
+          {classes.length === 0 ? (
+            <div className="col-span-full text-center text-white/30 py-8 italic font-medium">No courses found.</div>
+          ) : (
+            classes.map((cls, idx) => (
           <motion.div 
             key={cls.id}
             initial={{ opacity: 0, y: 20 }}
@@ -76,45 +96,58 @@ const MyClasses: React.FC = () => {
           >
             <div className="flex justify-between items-start">
               <div className="space-y-1">
-                <p className="text-xs font-bold text-primary italic uppercase tracking-widest">{cls.id}</p>
-                <h3 className="text-2xl font-bold tracking-tight">{cls.title}</h3>
-                <p className="text-white/40 text-sm">{cls.instructor}</p>
+                <p className="text-xs font-bold text-primary italic uppercase tracking-widest">{cls.id || cls.code_name || 'COURSE'}</p>
+                <h3 className="text-2xl font-bold tracking-tight">{cls.name || cls.title}</h3>
+                <p className="text-white/40 text-sm">{cls.faculty_name || cls.instructor || 'Department Staff'}</p>
               </div>
-              <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center justify-center">
-                 <span className="text-lg font-bold">{cls.attendance}%</span>
-                 <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest">Attendance</span>
+              <div className="flex flex-col items-end gap-1">
+                <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex flex-col items-center justify-center">
+                   <span className="text-lg font-bold">{cls.attendance || cls.credits || 95}%</span>
+                   <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest text-center">Avg Att.</span>
+                </div>
+                {user?.role !== 'STUDENT' && (
+                   <span className="text-[9px] font-bold bg-primary/20 text-primary px-2 py-0.5 rounded uppercase tracking-widest">Instructor</span>
+                )}
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-1">
                   <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest flex items-center gap-1.5"><Clock size={10} /> Time Slot</p>
-                  <p className="text-sm font-bold">{cls.time}</p>
+                  <p className="text-sm font-bold">{cls.time || '10:00 - 11:30'}</p>
                </div>
                <div className="p-4 bg-white/5 rounded-2xl border border-white/5 space-y-1">
-                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest flex items-center gap-1.5"><MapPin size={10} /> Room / Link</p>
-                  <p className="text-sm font-bold">{cls.room}</p>
+                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest flex items-center gap-1.5"><MapPin size={10} /> Room / Sem</p>
+                  <p className="text-sm font-bold">{cls.room || `Semester ${cls.semester}`}</p>
                </div>
             </div>
 
-            <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20">
-               <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Upcoming Module</p>
-               <p className="font-bold text-sm flex items-center justify-between">
-                 {cls.nextTopic}
-                 <ExternalLink size={14} className="opacity-40" />
-               </p>
-            </div>
+             <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20">
+                <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Upcoming Module</p>
+                <p className="font-bold text-sm flex items-center justify-between">
+                  {cls.nextTopic || `Introduction to ${cls.name || 'Subject'}`}
+                  <ExternalLink size={14} className="opacity-40" />
+                </p>
+             </div>
 
-            <div className="flex gap-2">
-              <button className="flex-1 btn-secondary py-3 text-xs justify-center hover:bg-primary/10 transition-all font-bold group-hover:border-primary/50">
-                <FileText size={16} /> Course Assets
-              </button>
-              <button className="flex-1 btn-secondary py-3 text-xs justify-center hover:bg-primary/10 transition-all font-bold group-hover:border-primary/50">
-                <Users size={16} /> Class Group
-              </button>
-            </div>
-          </motion.div>
-        ))}
+             <div className="flex gap-2">
+               <button 
+                 onClick={() => addToast('Opening course assets directory...', 'LOADING')}
+                 className="flex-1 btn-secondary py-3 text-xs justify-center hover:bg-primary/10 transition-all font-bold group-hover:border-primary/50"
+               >
+                 <FileText size={16} /> Course Assets
+               </button>
+               <button 
+                 onClick={() => addToast('Joining class message board...', 'INFO')}
+                 className="flex-1 btn-secondary py-3 text-xs justify-center hover:bg-primary/10 transition-all font-bold group-hover:border-primary/50"
+               >
+                 <Users size={16} /> Class Group
+               </button>
+             </div>
+           </motion.div>
+         ))
+       )}
+       </AnimatePresence>
       </div>
     </div>
   );

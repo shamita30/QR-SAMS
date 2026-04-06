@@ -23,7 +23,12 @@ const MarkAttendance: React.FC = () => {
 
   useEffect(() => {
     if (showScanner) {
-      const scanner = new Html5QrcodeScanner('qr-reader', { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+      const scanner = new Html5QrcodeScanner('qr-reader', { 
+        fps: 10, 
+        qrbox: { width: 250, height: 250 },
+        rememberLastUsedCamera: true,
+        aspectRatio: 1.0,
+      }, false);
       scanner.render((decodedText: string) => {
         scanner.clear();
         setShowScanner(false);
@@ -60,7 +65,7 @@ const MarkAttendance: React.FC = () => {
     setStatus('LOADING');
     try {
       const { latitude, longitude } = await getGeoLocation();
-      const res = await fetch('http://localhost:3001/api/attendance/mark', {
+      const res = await fetch('/api/attendance/mark', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: tokenToUse, userId: user.id, latitude, longitude })
@@ -167,7 +172,7 @@ const MarkAttendance: React.FC = () => {
 
                 {showScanner ? (
                    <div className="space-y-4">
-                     <div id="qr-reader" className="w-full bg-white/5 rounded-2xl overflow-hidden border border-white/10"></div>
+                     <div id="qr-reader" className="w-full bg-white/5 rounded-2xl overflow-hidden border border-white/10 [&_button]:bg-white/10 [&_button]:hover:bg-white/20 [&_button]:text-white [&_button]:font-bold [&_button]:py-2 [&_button]:px-4 [&_button]:rounded-xl [&_button]:m-2 [&_select]:bg-background [&_select]:text-white [&_select]:p-3 [&_select]:rounded-xl [&_select]:border [&_select]:border-white/20 [&_select]:w-full [&_select]:max-w-xs [&_select]:my-2"></div>
                      <button onClick={() => setShowScanner(false)} className="mx-auto text-xs text-white/40 hover:text-white block">Cancel Scanner</button>
                    </div>
                 ) : (

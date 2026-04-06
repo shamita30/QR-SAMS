@@ -6,9 +6,11 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/useAuthStore';
+import { useToastStore } from '../store/useToastStore';
 
 const UserManagement: React.FC = () => {
   const { user } = useAuthStore();
+  const { addToast } = useToastStore();
   const [activeTab, setActiveTab] = useState<'LIST' | 'CCTV'>('LIST');
   
   if (!user) return <div className="p-8 text-center text-red-500">Access Denied. Please log in.</div>;
@@ -41,9 +43,15 @@ const UserManagement: React.FC = () => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     try {
       const res = await fetch(`http://localhost:3001/api/users/${userId}`, { method: 'DELETE' });
-      if (res.ok) fetchUsers();
+      if (res.ok) {
+        fetchUsers();
+        addToast('User deleted successfully', 'SUCCESS');
+      } else {
+        addToast('Failed to delete user', 'ERROR');
+      }
     } catch (e) {
       console.error('Failed to delete user:', e);
+      addToast('Network error deleting user', 'ERROR');
     }
   };
 
@@ -59,9 +67,13 @@ const UserManagement: React.FC = () => {
         setShowAddModal(false);
         setNewUser({ username: '', name: '', role: 'STUDENT', department: user.department || 'CSE' });
         fetchUsers();
+        addToast('User identity registered', 'SUCCESS');
+      } else {
+        addToast('Failed to register user', 'ERROR');
       }
     } catch (e) {
       console.error('Failed to add user:', e);
+      addToast('Network error adding user', 'ERROR');
     }
   };
 
@@ -82,9 +94,13 @@ const UserManagement: React.FC = () => {
       if (res.ok) {
         setEditingUser(null);
         fetchUsers();
+        addToast('User profile updated', 'SUCCESS');
+      } else {
+        addToast('Failed to update profile', 'ERROR');
       }
     } catch (e) {
       console.error('Failed to update user:', e);
+      addToast('Network error updating profile', 'ERROR');
     }
   };
 
@@ -148,7 +164,10 @@ const UserManagement: React.FC = () => {
                   className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-4 outline-none focus:border-primary/50"
                 />
               </div>
-              <button className="btn-secondary py-2.5">
+              <button 
+                onClick={() => addToast('Opening filter panel...', 'INFO')}
+                className="btn-secondary py-2.5"
+              >
                 <Filter size={18} /> Filter
               </button>
             </div>

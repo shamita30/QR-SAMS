@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { 
-  FileQuestion, Clock, CheckCircle2, XCircle, 
-  ArrowRight, Award, Brain, Zap,
-  Settings, Play, RotateCcw, Info
+  FileQuestion, Clock, CheckCircle2, 
+  ArrowRight, Play
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const LectureQuiz: React.FC = () => {
   const [isStarted, setIsStarted] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [currentQuestion] = useState(0);
   const [showExplanation, setShowExplanation] = useState(false);
 
   const questions = [

@@ -64,21 +64,21 @@ const Leaderboard: React.FC = () => {
           transition={{ delay: 0.2 }}
           className="order-2 md:order-1"
         >
-          <GlassCard className="text-center pb-8 border-b-4 border-b-secondary/40">
+          <GlassCard className="text-center pb-8 border-b-4" style={{ borderBottomColor: '#d1d5db' }}>
             <div className="relative inline-block mb-6">
-              <div className="w-24 h-24 rounded-full bg-secondary/10 border-2 border-secondary/40 p-1">
-                <div className="w-full h-full rounded-full bg-background flex items-center justify-center font-outfit text-2xl font-bold text-secondary">
+              <div className="w-24 h-24 rounded-full p-1" style={{ backgroundColor: '#d1d5db20', borderColor: '#d1d5db60', borderWidth: '2px' }}>
+                <div className="w-full h-full rounded-full bg-background flex items-center justify-center font-outfit text-2xl font-bold" style={{ color: '#d1d5db' }}>
                   {topThree[1].avatar}
                 </div>
               </div>
-              <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-secondary border-4 border-background flex items-center justify-center text-white">
-                <Medal size={14} />
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-4 border-background flex items-center justify-center text-white shadow-[0_0_15px_rgba(209,213,219,0.5)]" style={{ backgroundColor: '#d1d5db' }}>
+                <Medal size={14} className="text-black" />
               </div>
             </div>
             <h3 className="text-lg font-bold text-white mb-1 uppercase tracking-tight">{topThree[1].name}</h3>
-            <p className="text-[10px] text-secondary font-bold uppercase tracking-widest mb-4">{topThree[1].role}</p>
-            <div className="px-4 py-2 bg-secondary/5 rounded-xl border border-secondary/10 inline-flex items-center gap-2">
-              <Zap size={14} className="text-secondary" />
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-4" style={{ color: '#d1d5db' }}>{topThree[1].role}</p>
+            <div className="px-4 py-2 rounded-xl border inline-flex items-center gap-2" style={{ backgroundColor: '#d1d5db10', borderColor: '#d1d5db30' }}>
+              <Zap size={14} style={{ color: '#d1d5db' }} />
               <span className="text-sm font-bold text-white">{topThree[1].xp.toLocaleString()} XP</span>
             </div>
           </GlassCard>
@@ -88,33 +88,33 @@ const Leaderboard: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="order-1 md:order-2"
+          className="order-1 md:order-2 z-10"
         >
-          <GlassCard className="text-center pb-12 pt-10 border-t-4 border-t-primary shadow-[0_0_40px_rgba(59,130,246,0.15)] ring-1 ring-primary/20">
+          <GlassCard className="text-center pb-12 pt-10 border-t-4 shadow-[0_0_50px_rgba(252,211,77,0.2)] ring-1" style={{ borderTopColor: '#fcd34d', '--tw-ring-color': '#fcd34d30' } as any}>
             <div className="relative inline-block mb-8">
               <motion.div 
                 animate={{ rotate: [0, 5, -5, 0] }}
                 transition={{ repeat: Infinity, duration: 4 }}
-                className="absolute -top-10 left-1/2 -translate-x-1/2 text-primary"
+                className="absolute -top-10 left-1/2 -translate-x-1/2" style={{ color: '#fcd34d' }}
               >
-                <Crown size={40} className="drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+                <Crown size={40} className="drop-shadow-[0_0_15px_rgba(252,211,77,0.6)]" />
               </motion.div>
-              <div className="w-32 h-32 rounded-full bg-primary/10 border-4 border-primary/40 p-1 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
-                <div className="w-full h-full rounded-full bg-background flex items-center justify-center font-outfit text-4xl font-bold text-primary">
+              <div className="w-32 h-32 rounded-full p-1 shadow-[0_0_30px_rgba(252,211,77,0.4)]" style={{ backgroundColor: '#fcd34d15', borderColor: '#fcd34d50', borderWidth: '4px' }}>
+                <div className="w-full h-full rounded-full bg-background flex items-center justify-center font-outfit text-4xl font-bold" style={{ color: '#fcd34d' }}>
                   {topThree[0].avatar}
                 </div>
               </div>
-              <div className="absolute -bottom-3 -right-3 w-10 h-10 rounded-full bg-primary border-4 border-background flex items-center justify-center text-white shadow-lg">
-                <Trophy size={18} />
+              <div className="absolute -bottom-3 -right-3 w-10 h-10 rounded-full border-4 border-background flex items-center justify-center text-white shadow-[0_0_20px_rgba(252,211,77,0.6)]" style={{ backgroundColor: '#fcd34d' }}>
+                <Trophy size={18} className="text-black" />
               </div>
             </div>
             <h3 className="text-2xl font-bold text-white mb-1 uppercase tracking-tighter">{topThree[0].name}</h3>
-            <p className="text-xs text-primary font-bold uppercase tracking-[0.2em] mb-6">{topThree[0].role}</p>
-            <div className="px-8 py-3 bg-primary/10 rounded-2xl border border-primary/20 inline-flex items-center gap-2 mb-4">
-              <Zap size={18} className="text-primary" />
+            <p className="text-xs font-bold uppercase tracking-[0.2em] mb-6" style={{ color: '#fcd34d' }}>{topThree[0].role}</p>
+            <div className="px-8 py-3 rounded-2xl border inline-flex items-center gap-2 mb-4" style={{ backgroundColor: '#fcd34d10', borderColor: '#fcd34d30' }}>
+              <Zap size={18} style={{ color: '#fcd34d' }} />
               <span className="text-xl font-bold text-white tracking-tight">{topThree[0].xp.toLocaleString()} XP</span>
             </div>
-            <div className="flex items-center justify-center gap-1.5 text-accent text-[10px] uppercase font-bold tracking-widest">
+            <div className="flex items-center justify-center gap-1.5 text-[10px] uppercase font-bold tracking-widest" style={{ color: '#fb923c' }}>
                <Flame size={14} /> Hot Streak: 12 Sessions
             </div>
           </GlassCard>
@@ -127,21 +127,21 @@ const Leaderboard: React.FC = () => {
           transition={{ delay: 0.4 }}
           className="order-3 md:order-3"
         >
-          <GlassCard className="text-center pb-8 border-b-4 border-b-accent/40">
+          <GlassCard className="text-center pb-8 border-b-4" style={{ borderBottomColor: '#b45309' }}>
             <div className="relative inline-block mb-6">
-              <div className="w-24 h-24 rounded-full bg-accent/10 border-2 border-accent/40 p-1">
-                <div className="w-full h-full rounded-full bg-background flex items-center justify-center font-outfit text-2xl font-bold text-accent">
+              <div className="w-24 h-24 rounded-full p-1" style={{ backgroundColor: '#b4530915', borderColor: '#b4530950', borderWidth: '2px' }}>
+                <div className="w-full h-full rounded-full bg-background flex items-center justify-center font-outfit text-2xl font-bold" style={{ color: '#d97706' }}>
                   {topThree[2].avatar}
                 </div>
               </div>
-              <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-accent border-4 border-background flex items-center justify-center text-white">
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-4 border-background flex items-center justify-center text-white shadow-[0_0_15px_rgba(180,83,9,0.5)]" style={{ backgroundColor: '#b45309' }}>
                 <Medal size={14} />
               </div>
             </div>
             <h3 className="text-lg font-bold text-white mb-1 uppercase tracking-tight">{topThree[2].name}</h3>
-            <p className="text-[10px] text-accent font-bold uppercase tracking-widest mb-4">{topThree[2].role}</p>
-            <div className="px-4 py-2 bg-accent/5 rounded-xl border border-accent/10 inline-flex items-center gap-2">
-              <Zap size={14} className="text-accent" />
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-4" style={{ color: '#d97706' }}>{topThree[2].role}</p>
+            <div className="px-4 py-2 rounded-xl border inline-flex items-center gap-2" style={{ backgroundColor: '#b4530910', borderColor: '#b4530930' }}>
+              <Zap size={14} style={{ color: '#d97706' }} />
               <span className="text-sm font-bold text-white">{topThree[2].xp.toLocaleString()} XP</span>
             </div>
           </GlassCard>

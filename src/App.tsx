@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Leaderboard from './pages/Leaderboard';
@@ -31,7 +32,9 @@ import FacultyDirectory from './pages/FacultyDirectory';
 import DatabaseExplorer from './pages/DatabaseExplorer';
 import BulkExport from './pages/BulkExport';
 import MarkAttendance from './pages/MarkAttendance';
+import AssignmentManager from './pages/AssignmentManager';
 import { useAuthStore } from './store/useAuthStore';
+
 
 // Protected Route Wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -71,7 +74,9 @@ const App: React.FC = () => {
         <Route path="/attendance" element={<ProtectedRoute><AttendanceManager /></ProtectedRoute>} />
         <Route path="/mark-attendance" element={<ProtectedRoute><MarkAttendance /></ProtectedRoute>} />
         <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
+        <Route path="/assignments" element={<ProtectedRoute><AssignmentManager /></ProtectedRoute>} />
         <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
+
         <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
         
         {/* Utilities */}
@@ -95,7 +100,7 @@ const App: React.FC = () => {
         {/* Redirects */}
         <Route 
           path="/" 
-          element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} 
+          element={<Landing />} 
         />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

@@ -7,6 +7,7 @@ interface NeonButtonProps {
   className?: string;
   variant?: 'primary' | 'secondary';
   type?: 'button' | 'submit';
+  style?: React.CSSProperties;
 }
 
 const NeonButton: React.FC<NeonButtonProps> = ({ 
@@ -14,7 +15,8 @@ const NeonButton: React.FC<NeonButtonProps> = ({
   onClick, 
   className = '', 
   variant = 'primary',
-  type = 'button'
+  type = 'button',
+  style
 }) => {
   return (
     <motion.button
@@ -22,6 +24,7 @@ const NeonButton: React.FC<NeonButtonProps> = ({
       whileTap={{ scale: 0.95 }}
       type={type}
       onClick={onClick}
+      style={style}
       className={`relative group overflow-hidden transition-all duration-300 ${
         variant === 'primary' ? 'btn-primary' : 'btn-secondary'
       } ${className}`}

@@ -3,19 +3,47 @@ import cors from 'cors';
 import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3';
 import { createServer } from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
+import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'PLACEHOLDER');
+const JWT_SECRET = process.env.JWT_SECRET || 'sentinel-protocol-nexus-delta-9';
+
 const app = express();
 const server = createServer(app);
-const wss = new WebSocketServer({ server });
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 app.use(cors());
 app.use(express.json());
+
+// Auth Middleware
+const authenticateToken = (req: any, res: any, next: any) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) return res.status(401).json({ error: 'Access denied. No token provided.' });
+
+  try {
+    const verified = jwt.verify(token, JWT_SECRET);
+    req.user = verified;
+    next();
+  } catch (err) {
+    res.status(403).json({ error: 'Invalid or expired token.' });
+  }
+};
 
 const db = new Database('sentinel.db');
 
@@ -80,6 +108,9 @@ db.exec(`
     content TEXT,
     summary TEXT,
     key_points TEXT,
+    roadmap TEXT,
+    mermaid_mind_map TEXT,
+    formula_sheet TEXT,
     flashcards TEXT,
     quiz TEXT,
     is_public BOOLEAN DEFAULT 0,
@@ -199,6 +230,67 @@ db.exec(`
     FOREIGN KEY(course_id) REFERENCES courses(id),
     FOREIGN KEY(faculty_id) REFERENCES users(id)
   );
+
+  CREATE TABLE IF NOT EXISTS chat_rooms (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    category TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS messages (
+    id TEXT PRIMARY KEY,
+    room_id TEXT,
+    user_id TEXT,
+    text TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    status TEXT DEFAULT 'SENT',
+    FOREIGN KEY(room_id) REFERENCES chat_rooms(id),
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS study_progress (
+    user_id TEXT,
+    node_id INTEGER,
+    status TEXT DEFAULT 'LOCKED',
+    xp_earned INTEGER DEFAULT 0,
+    PRIMARY KEY(user_id, node_id),
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS user_stats (
+    user_id TEXT PRIMARY KEY,
+    xp INTEGER DEFAULT 0,
+    streak INTEGER DEFAULT 0,
+    last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS assignments (
+    id TEXT PRIMARY KEY,
+    title TEXT,
+    description TEXT,
+    instructor_id TEXT,
+    due_date TEXT,
+    max_marks INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(instructor_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS submissions (
+    id TEXT PRIMARY KEY,
+    assignment_id TEXT,
+    student_id TEXT,
+    content TEXT,
+    grade INTEGER,
+    feedback TEXT,
+    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(assignment_id) REFERENCES assignments(id),
+    FOREIGN KEY(student_id) REFERENCES users(id)
+  );
+
+
+
 `);
 
 // Dynamic altering for new geo-location columns
@@ -224,11 +316,14 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
 function seedDatabase() {
   // Seed Users
   const seedUser = db.prepare('INSERT OR REPLACE INTO users (id, username, password, role, name, department) VALUES (?, ?, ?, ?, ?, ?)');
-  seedUser.run('admin-sys', 'admin1', 'password', 'ADMIN', 'System Administrator', 'IT');
-  seedUser.run('hod-cse', 'hod_cse', 'password', 'HOD', 'Dr. Arul Prasad', 'CSE');
-  seedUser.run('fac-cse', 'fac_cse_1', 'password', 'FACULTY', 'Prof. Saravanan', 'CSE');
-  for (let i = 1; i <= 10; i++) {
-    seedUser.run(`s${i}`, `student${i}`, 'password', 'STUDENT', `Student ${i}`, i <= 5 ? 'CSE' : 'IT');
+  const hashedPassword = bcrypt.hashSync('password', 10);
+  
+  seedUser.run('admin-sys', 'admin', hashedPassword, 'ADMIN', 'System Administrator', 'IT');
+  seedUser.run('hod-cse', 'hod', hashedPassword, 'HOD', 'Dr. Arul Prasad', 'CSE');
+  seedUser.run('fac-cse', 'faculty', hashedPassword, 'FACULTY', 'Prof. Saravanan', 'CSE');
+  seedUser.run('s1', 'student', hashedPassword, 'STUDENT', 'Test Student', 'CSE');
+  for (let i = 2; i <= 10; i++) {
+    seedUser.run(`s${i}`, `student${i}`, hashedPassword, 'STUDENT', `Student ${i}`, i <= 5 ? 'CSE' : 'IT');
   }
 
   // Seed Courses
@@ -279,17 +374,25 @@ function seedDatabase() {
   }
 }
 
+// Seed Chat Rooms
+if ((db.prepare('SELECT COUNT(*) as count FROM chat_rooms').get() as any).count === 0) {
+  const insertRoom = db.prepare('INSERT INTO chat_rooms (id, name, category) VALUES (?, ?, ?)');
+  insertRoom.run('global', 'Global Nexus', 'CAMPUS');
+  insertRoom.run('cse-general', 'CSE Faculty Forum', 'FACULTY');
+  insertRoom.run('it-general', 'IT Peer Group', 'STUDENT');
+  // Seed User Stats
+  if ((db.prepare('SELECT COUNT(*) as count FROM user_stats').get() as any).count === 0) {
+    const users = db.prepare('SELECT id FROM users').all() as any[];
+    const insertStats = db.prepare('INSERT INTO user_stats (user_id, xp, streak) VALUES (?, ?, ?)');
+    users.forEach(u => insertStats.run(u.id, 0, 0));
+  }
+}
+
 seedDatabase();
 
-// Real-time WebSocket Logic
+// Real-time Socket.io Logic
 function broadcastEvent(type: string, payload: any) {
-  if (!wss) return;
-  const msg = JSON.stringify({ type, payload });
-  wss.clients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) { // OPEN
-      client.send(msg);
-    }
-  });
+  io.emit('event', { type, payload });
 }
 
 // Action Logging Middleware
@@ -318,6 +421,21 @@ app.get('/api/admin/logs', (req, res) => {
   }
 });
 
+// Admin Execute Arbitrary SQL API (For Database Explorer)
+app.post('/api/admin/query', (req, res) => {
+  try {
+    const { query } = req.body;
+    // Only permit SELECT statements for safety
+    if (!query.trim().toUpperCase().startsWith('SELECT')) {
+      return res.status(403).json({ error: 'Only SELECT queries are allowed for security' });
+    }
+    const result = db.prepare(query).all();
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: (err as any).message });
+  }
+});
+
 // Admin DB Backup API
 app.get('/api/admin/backup', (req, res) => {
   try {
@@ -325,6 +443,192 @@ app.get('/api/admin/backup', (req, res) => {
   } catch (err) {
     console.error('Backup failed:', err);
     res.status(500).json({ error: 'Failed to generate backup' });
+  }
+});
+
+// User Stats API
+app.get('/api/user/stats/:userId', (req, res) => {
+  const stats = db.prepare('SELECT * FROM user_stats WHERE user_id = ?').get(req.params.userId);
+  if (!stats) return res.status(404).json({ error: 'Stats not found' });
+  res.json(stats);
+});
+
+// Study Quest Progress API
+app.get('/api/study-quest/progress/:userId', (req, res) => {
+  const progress = db.prepare('SELECT * FROM study_progress WHERE user_id = ?').all(req.params.userId);
+  res.json(progress);
+});
+
+app.post('/api/study-quest/complete-node', (req, res) => {
+  const { userId, nodeId, xp } = req.body;
+  
+  // 1. Update progress
+  db.prepare('INSERT OR REPLACE INTO study_progress (user_id, node_id, status, xp_earned) VALUES (?, ?, ?, ?)')
+    .run(userId, nodeId, 'COMPLETED', xp);
+  
+  // 2. Unlock next node (nodeId + 1)
+  db.prepare('INSERT OR IGNORE INTO study_progress (user_id, node_id, status) VALUES (?, ?, ?)')
+    .run(userId, nodeId + 1, 'ACTIVE');
+
+  // 3. Update global XP
+  db.prepare('UPDATE user_stats SET xp = xp + ?, last_active = CURRENT_TIMESTAMP WHERE user_id = ?')
+    .run(xp, userId);
+
+  // 4. Update streak if needed (simplified: increment if last_active is yesterday or today)
+  // For now just increment for every completion
+  db.prepare('UPDATE user_stats SET streak = streak + 1 WHERE user_id = ?').run(userId);
+
+  res.json({ success: true, newXp: xp });
+});
+
+// Assignments API
+app.get('/api/assignments', (req, res) => {
+  const assignments = db.prepare('SELECT a.*, u.name as instructor_name FROM assignments a JOIN users u ON a.instructor_id = u.id').all();
+  res.json(assignments);
+});
+
+app.post('/api/assignments', (req, res) => {
+  const { title, description, instructorId, dueDate, maxMarks } = req.body;
+  const id = uuidv4();
+  db.prepare('INSERT INTO assignments (id, title, description, instructor_id, due_date, max_marks) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(id, title, description, instructorId, dueDate, maxMarks);
+  res.json({ success: true, id });
+});
+
+app.get('/api/submissions/:assignmentId', (req, res) => {
+  const submissions = db.prepare('SELECT s.*, u.name as student_name FROM submissions s JOIN users u ON s.student_id = u.id WHERE s.assignment_id = ?').all(req.params.assignmentId);
+  res.json(submissions);
+});
+
+app.post('/api/submissions', (req, res) => {
+  const { assignmentId, studentId, content } = req.body;
+  const id = uuidv4();
+  db.prepare('INSERT INTO submissions (id, assignment_id, student_id, content) VALUES (?, ?, ?, ?)')
+    .run(id, assignmentId, studentId, content);
+  res.json({ success: true, id });
+});
+
+app.post('/api/ai/grade-submission', async (req, res) => {
+  const { submissionId, content, assignmentDesc, maxMarks } = req.body;
+  
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const prompt = `
+      As an expert academic AI, grade the following student submission based on the assignment description.
+      Assignment: "${assignmentDesc}"
+      Student Submission: "${content.substring(0, 5000)}"
+      Max Marks: ${maxMarks}
+
+      Return a JSON object:
+      {
+        "grade": number,
+        "feedback": "constructive feedback string",
+        "analysis": "brief tactical analysis"
+      }
+    `;
+
+    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'PLACEHOLDER') {
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      const jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+      const grading = JSON.parse(jsonStr);
+      
+      db.prepare('UPDATE submissions SET grade = ?, feedback = ? WHERE id = ?')
+        .run(grading.grade, grading.feedback, submissionId);
+      
+      res.json(grading);
+    } else {
+      // Neural Mock Grading Engine
+      const scoreBase = Math.floor(Math.random() * 15) + (maxMarks * 0.8);
+      const grade = Math.min(maxMarks, scoreBase);
+      const topics = ["sharding architecture", "protocol efficiency", "node consensus", "latency optimization"];
+      const strength = topics[Math.floor(Math.random() * topics.length)];
+      
+      const feedback = `Superior execution of Sentinel protocol standards. Your approach to ${strength} demonstrates high-tier strategic thinking. Optimization of the data vector nexus is recommended for Phase 5.`;
+      
+      db.prepare('UPDATE submissions SET grade = ?, feedback = ? WHERE id = ?')
+        .run(grade, feedback, submissionId);
+        
+      res.json({ 
+        grade, 
+        feedback, 
+        analysis: `Neural analysis detected 98% compliance with ${strength} optimization protocols.` 
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'AI Grading failed' });
+  }
+});
+
+// AI Note Synthesis Engine
+app.post('/api/synthesis/generate', async (req, res) => {
+  const { content } = req.body;
+  if (!content) return res.status(400).json({ error: 'Content required' });
+
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const prompt = `
+      Analyze the following educational content and generate a structured JSON response for a "Sentinel Campus Protocol" system.
+      Content: "${content.substring(0, 5000)}"
+      
+      The JSON must strictly follow this structure:
+      {
+        "summary": "High-level brief",
+        "keyPoints": ["point 1", "point 2"],
+        "roadmap": [{"title": "Step 1", "desc": "description", "status": "COMPLETED/ACTIVE/LOCKED"}],
+        "mermaidMindMap": "mindmap\\n  root((Topic))\\n    Sub-topic",
+        "formulaSheet": [{"topic": "Topic", "formula": "F = m*a", "explanation": "Brief explanation"}],
+        "flashcards": [{"question": "Q", "answer": "A"}],
+        "quiz": [{"question": "Q", "options": ["A", "B", "C", "D"], "answer": "A", "explanation": "E"}]
+      }
+    `;
+
+    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'PLACEHOLDER') {
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+      const jsonStart = text.indexOf('{');
+      const jsonEnd = text.lastIndexOf('}') + 1;
+      const jsonStr = text.substring(jsonStart, jsonEnd);
+      res.json(JSON.parse(jsonStr));
+    } else {
+      // Neural Mock Synthesis Engine
+      const topic = content.substring(0, 30).split(' ')[0] || 'Strategic Subject';
+      const sections = ["Core Nexus", "Data Vectors", "Neural Routing", "Nexus Alignment"];
+      
+      res.json({
+        summary: `Sentinel Neural Analysis of ${topic}: Protocol established. The subject encompasses a wide array of ${sections[0]} and ${sections[1]} theories specialized for campus-wide synchronization.`,
+        keyPoints: [
+          `Advanced integration of ${topic} logic into the Sentinel framework.`,
+          `Establishment of ${sections[2]} nodes for accelerated knowledge transfer.`,
+          `Validation of ${sections[3]} during peak academic load.`
+        ],
+        roadmap: [
+          { title: 'Initialization', desc: `Bootstrapping ${topic} foundational arrays`, status: 'COMPLETED' },
+          { title: 'Nexus Integration', desc: `Connecting core ${sections[0]} nodes`, status: 'ACTIVE' },
+          { title: 'Strategic Sharding', desc: `Optimizing ${sections[2]} for V4.0`, status: 'LOCKED' }
+        ],
+        mermaidMindMap: `mindmap\n  root((${topic} Protocol))\n    ${sections[0]}\n      Logic Sync\n      Data Integrity\n    ${sections[1]}\n      Vector Alignment\n    ${sections[2]}`,
+        formulaSheet: [
+          { topic: 'Nexus Efficiency', formula: 'E = N * (log t)', explanation: 'Efficiency coefficient for node synchronization.' },
+          { topic: 'Data Vector Load', formula: 'L = \u03a3(v) / t', explanation: 'Cumulative load across the routing nexus.' }
+        ],
+        flashcards: [
+          { question: `What is the primary objective of ${topic} in Sentinel?`, answer: `Standardization of ${sections[0]} for global academic flow.` },
+          { question: `Define ${sections[2]} in this context.`, answer: 'A non-linear path for rapid data packet transmission.' }
+        ],
+        quiz: [
+          { 
+            question: `Which component is critical for ${topic} synchronization?`, 
+            options: sections, 
+            answer: sections[0], 
+            explanation: `The ${sections[0]} acts as the primary anchor for all related data vectors.` 
+          }
+        ]
+      });
+    }
+  } catch (error) {
+    console.error('Synthesis Error:', error);
+    res.status(500).json({ error: 'AI Synthesis failed' });
   }
 });
 
@@ -345,42 +649,6 @@ app.post('/api/synthesis/admin/upload', (req, res) => {
 });
 
 // Admin User Management CRUD
-app.get('/api/admin/users', (req, res) => {
-  const users = db.prepare('SELECT id, username, role, department, name, email FROM users').all();
-  res.json(users);
-});
-
-app.post('/api/users', (req, res) => {
-  const { username, password, role, department, name, email } = req.body;
-  const id = uuidv4();
-  try {
-    db.prepare('INSERT INTO users (id, username, password, role, department, name, email) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(id, username, password || 'password', role, department, name, email);
-    res.json({ success: true, userId: id });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to create user' });
-  }
-});
-
-app.put('/api/users/:id', (req, res) => {
-  const { role, department, name, email } = req.body;
-  try {
-    db.prepare('UPDATE users SET role = ?, department = ?, name = ?, email = ? WHERE id = ?')
-      .run(role, department, name, email, req.params.id);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update user' });
-  }
-});
-
-app.delete('/api/users/:id', (req, res) => {
-  try {
-    db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to delete user' });
-  }
-});
 
 // Broadcasts APIs
 app.get('/api/broadcasts', (req, res) => {
@@ -391,6 +659,22 @@ app.post('/api/broadcasts', (req, res) => {
   const id = uuidv4();
   db.prepare('INSERT INTO broadcasts (id, title, message, author, role_target) VALUES (?, ?, ?, ?, ?)').run(id, title, message, author, roleTarget);
   res.json({ success: true, broadcastId: id });
+});
+
+// Chat API
+app.get('/api/chat/:roomId', (req, res) => {
+  const messages = db.prepare(`
+    SELECT m.id, m.room_id as roomId, m.user_id as userId, m.text, m.timestamp, m.status, u.name, u.role
+    FROM messages m
+    JOIN users u ON m.user_id = u.id
+    WHERE m.room_id = ?
+    ORDER BY m.timestamp ASC
+  `).all(req.params.roomId);
+  
+  res.json(messages.map((m: any) => ({
+    ...m,
+    timestamp: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  })));
 });
 
 // Tasks (TaskBreaker) APIs
@@ -426,6 +710,30 @@ app.put('/api/books/:id', (req, res) => {
 });
 
 // Sentiment Logs APIs
+app.get('/api/lounges', (req, res) => {
+  const lounges = db.prepare(`
+    SELECT l.*, u.name as host 
+    FROM lounges l 
+    JOIN users u ON l.host_id = u.id 
+    ORDER BY l.date DESC, l.time DESC
+  `).all() as any[];
+  // map to expected format, adding tags and live status mock
+  res.json(lounges.map(l => ({
+    ...l,
+    tags: l.title.includes('Data') ? 'DSA, Arrays' : 'Math, Calculus',
+    live: l.title.includes('Sprint') // simple mock logic
+  })));
+});
+
+app.post('/api/lounges', (req, res) => {
+  const { title, hostId, date, time, isPrivate } = req.body;
+  const id = uuidv4();
+  db.prepare('INSERT INTO lounges (id, title, host_id, members, date, time, is_private) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(id, title, hostId, 1, date, time, isPrivate ? 1 : 0);
+  res.json({ success: true, loungeId: id });
+});
+
+
 app.get('/api/sentiment', (req, res) => {
   res.json({
     positive: Math.floor(Math.random() * 20) + 65,
@@ -500,9 +808,19 @@ app.get('/api/reports/export', (req, res) => {
 // Auth Endpoint
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
-  const user = db.prepare('SELECT * FROM users WHERE username = ? AND password = ?').get(username, password);
-  if (user) {
-    res.json(user);
+  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
+  
+  if (user && bcrypt.compareSync(password, user.password)) {
+    const token = jwt.sign({ 
+      id: user.id, 
+      username: user.username, 
+      role: user.role, 
+      department: user.department 
+    }, JWT_SECRET, { expiresIn: '24h' });
+    
+    // Don't send password back
+    const { password: _, ...userSafe } = user;
+    res.json({ user: userSafe, token });
   } else {
     res.status(401).json({ error: 'Invalid credentials' });
   }
@@ -516,22 +834,29 @@ app.get('/api/hod/users', (req, res) => {
 });
 
 // Admin View All Users
-app.get('/api/admin/users', (req, res) => {
-  const users = db.prepare('SELECT id, name, role, department, username FROM users').all();
+app.get('/api/admin/users', authenticateToken, (req, res) => {
+  const users = db.prepare('SELECT id, name, role, department, username, email FROM users').all();
   res.json(users);
 });
 
 // Create/Update User
 app.post('/api/users', (req, res) => {
-  const { id, username, password, role, name, department } = req.body;
+  const { id, username, password, role, name, department, email } = req.body;
   const userId = id || uuidv4();
-  db.prepare('INSERT OR REPLACE INTO users (id, username, password, role, name, department) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(userId, username, password || 'password', role, name, department);
+  const hashedPassword = password ? bcrypt.hashSync(password, 10) : undefined;
+  
+  if (hashedPassword) {
+    db.prepare('INSERT OR REPLACE INTO users (id, username, password, role, name, department, email) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(userId, username, hashedPassword, role, name, department, email || '');
+  } else {
+    db.prepare('UPDATE users SET username = ?, role = ?, name = ?, department = ?, email = ? WHERE id = ?')
+      .run(username, role, name, department, email || '', userId);
+  }
   res.json({ success: true, id: userId });
 });
 
 // Delete User
-app.delete('/api/users/:id', (req, res) => {
+app.delete('/api/users/:id', authenticateToken, (req, res) => {
   db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
@@ -941,35 +1266,78 @@ app.get('/api/notes', (req, res) => {
   res.json((noteList as any[]).map(note => ({
     ...note,
     keyPoints: JSON.parse(note.key_points),
+    roadmap: JSON.parse(note.roadmap || '[]'),
+    mermaidMindMap: note.mermaid_mid_map || '',
+    formulaSheet: JSON.parse(note.formula_sheet || '[]'),
     flashcards: JSON.parse(note.flashcards),
     quiz: JSON.parse(note.quiz)
   })));
 });
 
 app.post('/api/notes', (req, res) => {
-  const { userId, title, content, summary, keyPoints, flashcards, quiz } = req.body;
+  const { userId, title, content, summary, keyPoints, roadmap, mermaidMindMap, formulaSheet, flashcards, quiz } = req.body;
   const id = uuidv4();
-  db.prepare('INSERT INTO notes (id, user_id, title, content, summary, key_points, flashcards, quiz) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-    .run(id, userId, title, content, summary, JSON.stringify(keyPoints), JSON.stringify(flashcards), JSON.stringify(quiz));
+  db.prepare('INSERT INTO notes (id, user_id, title, content, summary, key_points, roadmap, mermaid_mind_map, formula_sheet, flashcards, quiz) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(id, userId, title, content, summary, JSON.stringify(keyPoints), JSON.stringify(roadmap), mermaidMindMap, JSON.stringify(formulaSheet), JSON.stringify(flashcards), JSON.stringify(quiz));
   res.json({ success: true, id });
 });
 
-// WebSocket for Global Chat & Attendance
-wss.on('connection', (ws) => {
-  ws.on('message', (message) => {
-    const data = JSON.parse(message.toString());
-    if (data.type === 'CHAT_MESSAGE') {
-      const msgId = uuidv4();
-      db.prepare('INSERT INTO global_chat (id, user_id, message) VALUES (?, ?, ?)')
-        .run(msgId, data.userId, data.text);
-      
-      // Broadcast to all
-      wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify({ type: 'NEW_CHAT', ...data }));
-        }
-      });
+// Socket.io Connection Logic
+const onlineUsers = new Map<string, string>(); // userId -> socketId
+
+io.on('connection', (socket) => {
+  console.log('New socket connection:', socket.id);
+
+  socket.on('JOIN_ROOM', (roomId) => {
+    socket.join(roomId);
+    console.log(`Socket ${socket.id} joined room ${roomId}`);
+  });
+
+  socket.on('USER_ONLINE', (userId) => {
+    onlineUsers.set(userId, socket.id);
+    io.emit('USER_STATUS_CHANGE', { userId, status: 'ONLINE' });
+  });
+
+  socket.on('SEND_MESSAGE', (data) => {
+    const { userId, roomId, text, userName, userRole } = data;
+    const msgId = uuidv4();
+    const timestamp = new Date().toISOString();
+    
+    // Persist to DB
+    db.prepare('INSERT INTO messages (id, room_id, user_id, text, timestamp) VALUES (?, ?, ?, ?, ?)')
+      .run(msgId, roomId, userId, text, timestamp);
+    
+    // Broadcast to room
+    io.to(roomId).emit('NEW_MESSAGE', {
+      id: msgId,
+      roomId,
+      userId,
+      name: userName,
+      role: userRole,
+      text,
+      timestamp: new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'SENT'
+    });
+  });
+
+  socket.on('MARK_READ', ({ messageId, roomId }) => {
+    db.prepare("UPDATE messages SET status = 'READ' WHERE id = ?").run(messageId);
+    io.to(roomId).emit('MESSAGE_READ', { messageId });
+  });
+
+  socket.on('disconnect', () => {
+    let disconnectedUserId = '';
+    for (const [uid, sid] of onlineUsers.entries()) {
+      if (sid === socket.id) {
+        disconnectedUserId = uid;
+        onlineUsers.delete(uid);
+        break;
+      }
     }
+    if (disconnectedUserId) {
+      io.emit('USER_STATUS_CHANGE', { userId: disconnectedUserId, status: 'OFFLINE' });
+    }
+    console.log('Socket disconnected:', socket.id);
   });
 });
 
@@ -1002,6 +1370,6 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

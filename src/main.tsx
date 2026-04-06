@@ -2,20 +2,43 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
+import { useAuthStore } from './store/useAuthStore'
 
-// Global fetch interceptor to route 'http://localhost:3001' to relative paths '/api/...'
-// This enables the app to run on a public domain without referencing local ports.
+// Comprehensive fetch interceptor for Sentinel Protocol
 const originalFetch = window.fetch;
-window.fetch = async function(...args) {
-  let [resource, config] = args;
+window.fetch = async function(...args: any[]) {
+  const [resource, config = {}] = args;
+  let finalResource = resource;
+  
+  // Normalize local API URL if needed
   if (typeof resource === 'string' && resource.startsWith('http://localhost:3001')) {
-    resource = resource.replace('http://localhost:3001', '');
+    finalResource = resource.replace('http://localhost:3001', '');
   }
-  return originalFetch(resource, config);
+  
+  // Inject JWT if available
+  const { token } = useAuthStore.getState();
+  const headers = {
+    ...config.headers,
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    'Content-Type': config.headers?.['Content-Type'] || 'application/json'
+  };
+
+  const response = await originalFetch(finalResource, {
+    ...config,
+    headers
+  });
+
+  // Handle systemic auth failures
+  if (response.status === 401 && !finalResource.includes('/api/auth/login')) {
+    useAuthStore.getState().logout();
+    window.location.href = '/login';
+  }
+
+  return response;
 };
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
-  </React.StrictMode>,
+  </React.StrictMode>
 )

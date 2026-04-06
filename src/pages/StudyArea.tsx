@@ -117,7 +117,7 @@ const StudyArea: React.FC = () => {
                  </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 py-4 border-y border-white/5">
+              <div className="grid grid-cols-2 gap-2 md:gap-4 py-4 border-y border-white/5">
                  <div className="space-y-1">
                     <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest">Network Payload</p>
                     <p className="text-xs font-bold text-white/60">{m.size}</p>
@@ -140,21 +140,23 @@ const StudyArea: React.FC = () => {
         <GlassCard className="p-0 overflow-hidden" hover={false}>
            <div className="divide-y divide-white/[0.05]">
               {materials.map(m => (
-                <div key={m.id} className="flex items-center gap-6 p-6 hover:bg-white/[0.02] transition-colors group">
+                <div key={m.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 p-4 md:p-6 hover:bg-white/[0.02] transition-colors group">
                    <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-white/20 group-hover:text-secondary transition-all">
                       <m.icon size={20} />
                    </div>
-                   <div className="flex-1">
+                   <div className="flex-1 w-full sm:w-auto">
                       <h4 className="text-sm font-bold text-white group-hover:text-secondary transition-colors uppercase tracking-tight">{m.title}</h4>
                       <p className="text-[10px] text-white/30 uppercase tracking-widest font-bold mt-0.5">{m.cat}</p>
                    </div>
-                   <div className="text-right">
-                      <p className="text-xs font-bold text-white/60 uppercase">{m.size}</p>
-                      <p className="text-[9px] font-bold text-white/20 uppercase tracking-tighter mt-1">{m.type}</p>
+                   <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto mt-2 sm:mt-0">
+                      <div className="text-left sm:text-right">
+                         <p className="text-xs font-bold text-white/60 uppercase">{m.size}</p>
+                         <p className="text-[9px] font-bold text-white/20 uppercase tracking-tighter mt-1">{m.type}</p>
+                      </div>
+                      <button className="p-3 rounded-xl bg-white/5 border border-white/5 hover:border-secondary/40 hover:text-secondary transition-all">
+                         <Download size={16} />
+                      </button>
                    </div>
-                   <button className="p-3 rounded-xl bg-white/5 border border-white/5 hover:border-secondary/40 hover:text-secondary transition-all">
-                      <Download size={16} />
-                   </button>
                 </div>
               ))}
            </div>
@@ -194,13 +196,13 @@ const StudyArea: React.FC = () => {
 
       {/* Global Intelligence Card */}
       <GlassCard className="bg-gradient-to-r from-secondary/10 via-background to-transparent border-secondary/20" hover={false}>
-         <div className="flex items-center gap-6">
+         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
             <div className="w-16 h-16 rounded-2xl bg-secondary/20 flex items-center justify-center text-secondary shadow-[0_0_20px_rgba(168,85,247,0.35)] shrink-0">
                <TrendingUp size={32} />
             </div>
             <div className="flex-1">
-               <h3 className="text-xl font-bold font-outfit uppercase italic tracking-wider">Campus Intel: Trend Segment</h3>
-               <p className="text-sm text-white/60 mt-1 max-w-2xl">
+               <h3 className="text-lg md:text-xl font-bold font-outfit uppercase italic tracking-wider">Campus Intel: Trend Segment</h3>
+               <p className="text-xs md:text-sm text-white/60 mt-1 max-w-2xl leading-relaxed">
                   "Advanced Algorithm Design" is currently being accessed by 42 concurrent HOD nodes. New briefing segments available.
                </p>
             </div>

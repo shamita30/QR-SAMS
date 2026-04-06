@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import GlassCard from '../components/ui/GlassCard';
 import NeonButton from '../components/ui/NeonButton';
 import { useAuthStore, UserRole } from '../store/useAuthStore';
+import { useToastStore } from '../store/useToastStore';
 import { useNavigate } from 'react-router-dom';
 
 const Login: React.FC = () => {
@@ -11,30 +12,54 @@ const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const login = useAuthStore((state) => state.login);
+  const { addToast } = useToastStore();
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Map role to correct seeded DB user
-    let userProfile = { id: 's1', name: 'Student 1', role: 'STUDENT', department: 'CSE' };
-    
-    if (role === 'FACULTY') {
-      userProfile = { id: 'fac-cse', name: 'Prof. Saravanan', role: 'FACULTY', department: 'CSE' };
-    } else if (role === 'HOD') {
-      userProfile = { id: 'hod-cse', name: 'Dr. Arul Prasad', role: 'HOD', department: 'CSE' };
-    } else if (role === 'ADMIN') {
-      userProfile = { id: 'admin-sys', name: 'System Administrator', role: 'ADMIN', department: 'IT' };
+    try {
+      const res = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast(`Welcome back, ${data.user.name}`, 'SUCCESS');
+        login(data.user, data.token);
+        navigate('/dashboard');
+      } else {
+        addToast(data.error || 'Identity verification failed.', 'ERROR');
+      }
+    } catch (e) {
+      addToast('Network node unreachable.', 'ERROR');
     }
-    
-    login(userProfile as any);
-    navigate('/dashboard');
   };
 
-  const handleQuickLogin = (selectedRole: UserRole) => {
+  const handleQuickLogin = async (selectedRole: UserRole) => {
     setRole(selectedRole);
-    setUsername(selectedRole.toLowerCase());
+    const u = selectedRole.toLowerCase();
+    setUsername(u);
     setPassword('password');
+    
+    try {
+      const res = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: 'password' })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addToast(`Welcome back, ${data.user.name}`, 'SUCCESS');
+        login(data.user, data.token);
+        navigate('/dashboard');
+      } else {
+        addToast(data.error || 'Identity verification failed.', 'ERROR');
+      }
+    } catch (e) {
+      addToast('Network node unreachable.', 'ERROR');
+    }
   };
 
   const roles: { id: UserRole; icon: any; label: string }[] = [
@@ -45,7 +70,7 @@ const Login: React.FC = () => {
   ];
 
   return (
-    <div className="min-height-screen flex items-center justify-center p-4 bg-[radial-gradient(circle_at_50%_50%,#0a1128_0%,#050a1f_100%)]">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[radial-gradient(circle_at_50%_50%,#0a1128_0%,#050a1f_100%)]">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -132,7 +157,7 @@ const Login: React.FC = () => {
             <p className="text-white/30 text-[10px] uppercase tracking-widest mb-3">
               Quick Login Support
             </p>
-            <div className="flex justify-center gap-2">
+            <div className="flex justify-center flex-wrap gap-2">
               {roles.map((r) => (
                 <button
                   key={r.id}
