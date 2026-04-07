@@ -32,7 +32,11 @@ export const useSocketStore = create<SocketState>((set, get) => ({
   initSocket: (userId: string) => {
     if (get().socket) return;
 
-    const socket = io('');
+    const wsUrl = window.location.port === '3000' 
+      ? `http://${window.location.hostname}:3001`
+      : window.location.origin;
+      
+    const socket = io(wsUrl);
 
     socket.on('connect', () => {
       set({ isConnected: true, socket });

@@ -507,6 +507,18 @@ app.post('/api/submissions', (req, res) => {
     .run(id, assignmentId, studentId, content);
   res.json({ success: true, id });
 });
+app.post('/api/ai/chat', async (req, res) => {
+  try {
+    const { message } = req.body;
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const prompt = `You are Sentinel AI, the intelligent academic assistant embedded in the Sentinel Campus web application. Keep your response helpful, concise, and lightly futuristic. The user says: "${message}"`;
+    const result = await model.generateContent(prompt);
+    res.json({ response: result.response.text() });
+  } catch (err: any) {
+    console.error('AI Chat Error:', err);
+    res.status(500).json({ error: 'Sentinel Neural Core offline or busy.' });
+  }
+});
 
 app.post('/api/ai/grade-submission', async (req, res) => {
   const { submissionId, content, assignmentDesc, maxMarks } = req.body;
