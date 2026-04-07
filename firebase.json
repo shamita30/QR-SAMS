@@ -6,6 +6,13 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "redirects": [
+      {
+        "source": "/",
+        "destination": "https://qr-sams-1.onrender.com",
+        "type": 301
+      }
+    ],
     "rewrites": [
       {
         "source": "**",
