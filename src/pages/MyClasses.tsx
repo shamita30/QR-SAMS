@@ -7,10 +7,12 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
+import { useNavigate } from 'react-router-dom';
 
 const MyClasses: React.FC = () => {
   const { user } = useAuthStore();
   const { addToast } = useToastStore();
+  const navigate = useNavigate();
   const [classes, setClasses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +48,7 @@ const MyClasses: React.FC = () => {
         </div>
         <div className="flex gap-3">
           <button 
-            onClick={() => addToast('Timeline view loaded', 'INFO')}
+            onClick={() => navigate('/schedule')}
             className="btn-secondary"
           >
              <Calendar size={18} /> Full Timeline
@@ -132,13 +134,13 @@ const MyClasses: React.FC = () => {
 
              <div className="flex gap-2">
                <button 
-                 onClick={() => addToast('Opening course assets directory...', 'LOADING')}
+                 onClick={() => navigate('/notes')}
                  className="flex-1 btn-secondary py-3 text-xs justify-center hover:bg-primary/10 transition-all font-bold group-hover:border-primary/50"
                >
                  <FileText size={16} /> Course Assets
                </button>
                <button 
-                 onClick={() => addToast('Joining class message board...', 'INFO')}
+                 onClick={() => navigate('/chat')}
                  className="flex-1 btn-secondary py-3 text-xs justify-center hover:bg-primary/10 transition-all font-bold group-hover:border-primary/50"
                >
                  <Users size={16} /> Class Group
