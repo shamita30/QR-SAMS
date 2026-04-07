@@ -39,15 +39,23 @@ const Login: React.FC = () => {
 
   const handleQuickLogin = async (selectedRole: UserRole) => {
     setRole(selectedRole);
-    const u = selectedRole.toLowerCase();
+    // Map roles to their actual seeded usernames in the database
+    const usernameMap: Record<UserRole, string> = {
+      STUDENT: 'student',
+      FACULTY: 'faculty',
+      ADMIN: 'admin',
+      HOD: 'hod'
+    };
+    const u = usernameMap[selectedRole] || selectedRole.toLowerCase();
+    const pwd = 'password';
     setUsername(u);
-    setPassword('password');
+    setPassword(pwd);
     
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: 'password' })
+        body: JSON.stringify({ username: u, password: pwd })
       });
       const data = await res.json();
       if (res.ok) {

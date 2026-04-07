@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   QrCode, CheckCircle2, XCircle, AlertTriangle, 
-  Loader2, Shield, ArrowLeft, Camera
+  Loader2, Shield, ArrowLeft, Camera, Smile
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useAuthStore } from '../store/useAuthStore';
+import { io } from 'socket.io-client';
 
 type MarkStatus = 'IDLE' | 'LOADING' | 'SUCCESS' | 'DUPLICATE' | 'ERROR' | 'NO_TOKEN';
 
@@ -20,6 +21,28 @@ const MarkAttendance: React.FC = () => {
   const [message, setMessage] = useState('');
   const [manualToken, setManualToken] = useState('');
   const [showScanner, setShowScanner] = useState(false);
+  const [feedbackSession, setFeedbackSession] = useState<string | null>(null);
+  const [feedbackEmoji, setFeedbackEmoji] = useState('');
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+
+  // Listen for session stopped to trigger feedback
+  useEffect(() => {
+    if (!user) return;
+    const wsUrl = window.location.port === '3000'
+      ? `http://${window.location.hostname}:3001`
+      : window.location.origin;
+    const socket = io(wsUrl);
+    socket.on('event', (data: any) => {
+      if (data.type === 'SESSION_STOPPED' && data.payload?.attendees) {
+        const isAttendee = data.payload.attendees.some((a: any) => a.user_id === user.id);
+        if (isAttendee) {
+          setFeedbackSession(data.payload.sessionId);
+        }
+      }
+    });
+    return () => { socket.disconnect(); };
+  }, [user]);
 
   useEffect(() => {
     if (showScanner) {
@@ -102,7 +125,8 @@ const MarkAttendance: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center">
+    <>
+      <div className="min-h-[80vh] flex items-center justify-center">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -226,6 +250,66 @@ const MarkAttendance: React.FC = () => {
         </div>
       </motion.div>
     </div>
+
+    {/* Session Feedback Overlay */}
+    <AnimatePresence>
+      {feedbackSession && !feedbackSubmitted && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-background/90 backdrop-blur-2xl" />
+          <motion.div initial={{ scale: 0.85, opacity: 0, y: 30 }} animate={{ scale: 1, opacity: 1, y: 0 }} className="relative w-full max-w-sm glass p-10 rounded-[3rem] border border-primary/30 text-center shadow-2xl">
+            <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-primary/20">
+              <Smile size={28} className="text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold uppercase tracking-tighter mb-2">Class Feedback</h2>
+            <p className="text-white/40 text-xs uppercase tracking-widest mb-8">How was today's session?</p>
+
+            <div className="flex justify-center gap-4 mb-8">
+              {[{ e: '😊', label: 'Great' }, { e: '😐', label: 'Average' }, { e: '😔', label: 'Poor' }].map(({ e, label }) => (
+                <button key={e} onClick={() => setFeedbackEmoji(e)} className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${ feedbackEmoji === e ? 'bg-primary/20 border-primary scale-110' : 'border-white/10 hover:border-primary/40' }`}>
+                  <span className="text-3xl">{e}</span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/40">{label}</span>
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              value={feedbackComment}
+              onChange={(e) => setFeedbackComment(e.target.value)}
+              placeholder="Any thoughts? (optional)"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm outline-none focus:border-primary/50 transition-all resize-none h-20 mb-6 placeholder:text-white/20"
+            />
+
+            <button
+              disabled={!feedbackEmoji}
+              onClick={async () => {
+                if (!feedbackEmoji || !feedbackSession || !user) return;
+                await fetch('/api/attendance/session/feedback', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ sessionId: feedbackSession, studentId: user.id, emoji: feedbackEmoji, comment: feedbackComment })
+                });
+                setFeedbackSubmitted(true);
+                setTimeout(() => setFeedbackSession(null), 2500);
+              }}
+              className="w-full py-4 bg-primary/20 text-primary border border-primary/30 rounded-2xl font-bold uppercase tracking-widest hover:bg-primary/30 transition-all disabled:opacity-40"
+            >
+              Submit Feedback
+            </button>
+            <button onClick={() => setFeedbackSession(null)} className="mt-4 text-[10px] text-white/20 hover:text-white/50 uppercase tracking-widest">Skip</button>
+          </motion.div>
+        </div>
+      )}
+      {feedbackSubmitted && feedbackSession && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 bg-background/80 backdrop-blur-xl" />
+          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative glass p-10 rounded-[3rem] text-center border border-accent/30">
+            <p className="text-4xl mb-4">🙏</p>
+            <h3 className="text-xl font-bold text-accent">Thank you!</h3>
+            <p className="text-white/50 text-sm mt-2">Your feedback has been recorded.</p>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+    </>
   );
 };
 

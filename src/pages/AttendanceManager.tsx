@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Users, Calendar, Search, 
-  QrCode, Square, Play, CheckCircle, Wifi, UserCheck, AlertCircle, BarChart, Copy, RefreshCw
+  QrCode, Square, Play, CheckCircle, Wifi, UserCheck, AlertCircle, BarChart, Copy, RefreshCw, Keyboard, X
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -23,6 +23,8 @@ const AttendanceManager: React.FC = () => {
   const [liveRecords, setLiveRecords] = useState<any[]>([]);
   const [countdown, setCountdown] = useState(30);
   const [analytics, setAnalytics] = useState<any>(null);
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualStudentId, setManualStudentId] = useState('');
 
   const wsRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -244,6 +246,14 @@ const AttendanceManager: React.FC = () => {
           >
             <Calendar size={18} /> History
           </button>
+          {activeSessionId && (
+            <button
+              onClick={() => setShowManualModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 transition-all text-sm font-bold"
+            >
+              <Keyboard size={16} /> Manual Entry
+            </button>
+          )}
         </div>
       </div>
 
@@ -463,6 +473,63 @@ const AttendanceManager: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Manual Attendance Modal */}
+      <AnimatePresence>
+        {showManualModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-background/80 backdrop-blur-xl" onClick={() => setShowManualModal(false)} />
+            <motion.div initial={{ scale: 0.9, y: 30, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 30, opacity: 0 }} className="relative w-full max-w-md glass p-8 rounded-[2.5rem] border border-yellow-500/30 shadow-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-bold uppercase tracking-tight flex items-center gap-2 text-yellow-400"><Keyboard size={20} /> Manual Entry</h3>
+                  <p className="text-[10px] text-white/30 uppercase tracking-widest mt-1">Enter student ID or username to mark attendance</p>
+                </div>
+                <button onClick={() => setShowManualModal(false)} className="p-2 glass rounded-xl text-white/40 hover:text-white transition-colors"><X size={16} /></button>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] ml-2">Student ID / Username</label>
+                  <input
+                    value={manualStudentId}
+                    onChange={(e) => setManualStudentId(e.target.value)}
+                    className="w-full bg-white/5 border border-yellow-500/30 rounded-2xl p-4 outline-none focus:border-yellow-500/60 text-sm font-bold mt-1"
+                    placeholder="e.g. s1 or student2"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    disabled={!manualStudentId.trim()}
+                    onClick={async () => {
+                      if (!manualStudentId.trim() || !activeSessionId) return;
+                      try {
+                        const res = await fetch('/api/attendance/manual', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ sessionId: activeSessionId, studentId: manualStudentId.trim(), facultyId: user?.id })
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          addToast(`✓ Manually marked: ${data.studentName || manualStudentId}`, 'SUCCESS');
+                          setManualStudentId('');
+                          setShowManualModal(false);
+                        } else {
+                          addToast(data.error || 'Failed to mark manually.', 'ERROR');
+                        }
+                      } catch { addToast('Network error.', 'ERROR'); }
+                    }}
+                    className="flex-1 py-3 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-yellow-500/30 transition-all disabled:opacity-40"
+                  >
+                    Mark Present
+                  </button>
+                  <button onClick={() => setShowManualModal(false)} className="px-6 glass rounded-2xl text-xs font-bold uppercase tracking-widest text-white/30 hover:text-white transition-all">Cancel</button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

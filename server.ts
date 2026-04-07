@@ -29,6 +29,24 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
+// Hackerman-style logging middleware
+app.use((req: any, res: any, next: any) => {
+  const start = Date.now();
+  const timestamp = new Date().toISOString();
+  const cyan = "\x1b[36m", green = "\x1b[32m", yellow = "\x1b[33m", red = "\x1b[31m", reset = "\x1b[0m", magenta = "\x1b[35m";
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const status = res.statusCode;
+    let statusColor = green;
+    if (status >= 400) statusColor = yellow;
+    if (status >= 500) statusColor = red;
+    if (!req.originalUrl.startsWith('/socket.io')) {
+      console.log(`${magenta}[SYS-LOG]${reset} ${cyan}${timestamp}${reset} | ${green}${req.method}${reset} ${req.originalUrl} | STATUS: ${statusColor}${status}${reset} | ${yellow}${duration}ms${reset} | IP: ${req.ip}`);
+    }
+  });
+  next();
+});
+
 // Auth Middleware
 const authenticateToken = (req: any, res: any, next: any) => {
   const authHeader = req.headers['authorization'];
@@ -290,6 +308,25 @@ db.exec(`
   );
 
 
+  CREATE TABLE IF NOT EXISTS session_feedback (
+    id TEXT PRIMARY KEY,
+    session_id TEXT,
+    student_id TEXT,
+    emoji TEXT,
+    comment TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(session_id) REFERENCES attendance_sessions(id),
+    FOREIGN KEY(student_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS note_quizzes (
+    id TEXT PRIMARY KEY,
+    note_id TEXT,
+    question TEXT,
+    options TEXT,
+    correct_index INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 
 `);
 
@@ -1176,9 +1213,53 @@ app.post('/api/attendance/session/refresh', (req, res) => {
 app.post('/api/attendance/session/stop', (req, res) => {
   const { sessionId } = req.body;
   db.prepare("UPDATE attendance_sessions SET status = 'CLOSED' WHERE id = ?").run(sessionId);
-  // Broadcast session stopped
-  broadcastEvent('SESSION_STOPPED', { sessionId });
-  res.json({ success: true });
+  // Get all students who marked attendance in this session
+  const attendees = db.prepare(
+    "SELECT a.user_id, u.name FROM attendance a JOIN users u ON a.user_id = u.id WHERE a.session_id = ?"
+  ).all(sessionId) as any[];
+  // Broadcast session stopped with list of attendees so they can be shown a feedback modal
+  broadcastEvent('SESSION_STOPPED', { sessionId, attendees });
+  res.json({ success: true, attendeeCount: attendees.length });
+});
+
+// Manual Attendance Entry by Faculty
+app.post('/api/attendance/manual', (req, res) => {
+  const { sessionId, studentId, facultyId } = req.body;
+  if (!sessionId || !studentId) return res.status(400).json({ error: 'sessionId and studentId required' });
+  const id = uuidv4();
+  try {
+    db.prepare("INSERT OR IGNORE INTO attendance (id, session_id, user_id, status) VALUES (?, ?, ?, 'PRESENT_MANUAL')").run(id, sessionId, studentId);
+    const student = db.prepare("SELECT name FROM users WHERE id = ?").get(studentId) as any;
+    broadcastEvent('ATTENDANCE_MARKED', { sessionId, studentId, studentName: student?.name || studentId, timestamp: new Date().toISOString(), manual: true });
+    res.json({ success: true, studentName: student?.name });
+  } catch (e: any) {
+    if (e.message?.includes('UNIQUE')) return res.status(409).json({ error: 'Attendance already marked for this student.' });
+    res.status(500).json({ error: 'Failed to record manual attendance.' });
+  }
+});
+
+// Session Feedback (emoji + comment from students after session ends)
+app.post('/api/attendance/session/feedback', (req, res) => {
+  const { sessionId, studentId, emoji, comment } = req.body;
+  const id = uuidv4();
+  try {
+    db.prepare("INSERT OR REPLACE INTO session_feedback (id, session_id, student_id, emoji, comment) VALUES (?, ?, ?, ?, ?)").run(id, sessionId, studentId, emoji, comment || '');
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to record feedback.' });
+  }
+});
+
+// Get Feedback for a Session (Faculty View)
+app.get('/api/attendance/session/:sessionId/feedback', (req, res) => {
+  const rows = db.prepare(`
+    SELECT sf.emoji, sf.comment, sf.timestamp, u.name as student_name
+    FROM session_feedback sf
+    LEFT JOIN users u ON sf.student_id = u.id
+    WHERE sf.session_id = ?
+    ORDER BY sf.timestamp DESC
+  `).all(req.params.sessionId);
+  res.json(rows);
 });
 
 // Get active sessions
@@ -1291,6 +1372,39 @@ app.post('/api/notes', (req, res) => {
   db.prepare('INSERT INTO notes (id, user_id, title, content, summary, key_points, roadmap, mermaid_mind_map, formula_sheet, flashcards, quiz) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
     .run(id, userId, title, content, summary, JSON.stringify(keyPoints), JSON.stringify(roadmap), mermaidMindMap, JSON.stringify(formulaSheet), JSON.stringify(flashcards), JSON.stringify(quiz));
   res.json({ success: true, id });
+});
+
+// AI Note Summarization
+app.post('/api/notes/summarize', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: 'No text provided.' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const prompt = `You are an expert academic assistant. Summarize the following note content into a clear, structured summary with key points, main topics, and important definitions. Format your response as JSON with: { "summary": "...", "keyPoints": ["...", "..."], "importantTerms": [{"term": "...", "definition": "..."}] }\n\nContent:\n${text.substring(0, 8000)}`;
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().replace(/```json|```/g, '').trim();
+    res.json(JSON.parse(raw));
+  } catch (e: any) {
+    console.error('Note summarize error:', e);
+    res.status(500).json({ error: 'AI summarization failed.' });
+  }
+});
+
+// AI Quiz Generation from Notes
+app.post('/api/notes/quiz', async (req, res) => {
+  try {
+    const { text, count = 5 } = req.body;
+    if (!text) return res.status(400).json({ error: 'No text provided.' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const prompt = `You are an academic quiz generator. Based on the following content, generate exactly ${count} multiple-choice questions. Return ONLY a valid JSON array in the format: [{"question":"...","options":["A","B","C","D"],"correctIndex":0}]. The correctIndex is 0-based.\n\nContent:\n${text.substring(0, 8000)}`;
+    const result = await model.generateContent(prompt);
+    const raw = result.response.text().replace(/```json|```/g, '').trim();
+    const questions = JSON.parse(raw);
+    res.json({ questions });
+  } catch (e: any) {
+    console.error('Quiz generation error:', e);
+    res.status(500).json({ error: 'AI quiz generation failed.' });
+  }
 });
 
 // Socket.io Connection Logic

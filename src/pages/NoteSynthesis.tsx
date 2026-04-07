@@ -28,6 +28,13 @@ const NoteSynthesis: React.FC = () => {
   const [result, setResult] = useState<NoteSynthesisResult | null>(null);
   const [activeTab, setActiveTab] = useState<'SUMMARY' | 'FLASHCARDS' | 'QUIZ' | 'ROADMAP' | 'MINDMAP' | 'FORMULAS'>('SUMMARY');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [aiSummary, setAiSummary] = useState<any>(null);
+  const [aiQuiz, setAiQuiz] = useState<any[]>([]);
+  const [isAiSummarizing, setIsAiSummarizing] = useState(false);
+  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const [showAiPanel, setShowAiPanel] = useState<'none' | 'summary' | 'quiz'>('none');
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -137,6 +144,38 @@ Conclusion
     }
   };
 
+  const handleAiSummarize = async () => {
+    if (!inputText.trim()) { addToast('Paste notes first to summarize.', 'ERROR'); return; }
+    setIsAiSummarizing(true);
+    setShowAiPanel('summary');
+    try {
+      const res = await fetch('/api/notes/summarize', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: inputText })
+      });
+      if (res.ok) { setAiSummary(await res.json()); addToast('AI Summary ready!', 'SUCCESS'); }
+      else addToast('Summarization failed.', 'ERROR');
+    } catch { addToast('Network error during summarization.', 'ERROR'); }
+    finally { setIsAiSummarizing(false); }
+  };
+
+  const handleGenerateQuiz = async () => {
+    if (!inputText.trim()) { addToast('Paste notes first to generate quiz.', 'ERROR'); return; }
+    setIsGeneratingQuiz(true);
+    setShowAiPanel('quiz');
+    setQuizAnswers({});
+    setQuizSubmitted(false);
+    try {
+      const res = await fetch('/api/notes/quiz', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: inputText, count: 5 })
+      });
+      if (res.ok) { const d = await res.json(); setAiQuiz(d.questions || []); addToast('Quiz generated!', 'SUCCESS'); }
+      else addToast('Quiz generation failed.', 'ERROR');
+    } catch { addToast('Network error during quiz generation.', 'ERROR'); }
+    finally { setIsGeneratingQuiz(false); }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -151,7 +190,7 @@ Conclusion
           </h1>
           <p className="text-white/40 mt-2">AI-driven extraction of key knowledge from your materials.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2">
           {isAdmin && (
             <button
               className={`btn-secondary flex items-center gap-2 ${adminMode ? 'bg-red-500/20 text-red-400 border-red-500/50' : ''}`}
@@ -163,23 +202,23 @@ Conclusion
           <button className="btn-secondary" onClick={() => fileInputRef.current?.click()}>
             <Upload size={18} /> {adminMode ? 'Upload Master Document' : 'Upload File'}
           </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            className="hidden"
-            accept=".txt,.md,.pdf,.ppt,.pptx"
-          />
+          <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".txt,.md,.pdf,.ppt,.pptx" />
           <button
-            className="btn-primary"
-            onClick={handleSynthesize}
-            disabled={isSynthesizing || !inputText.trim()}
+            onClick={handleAiSummarize}
+            disabled={isAiSummarizing || !inputText.trim()}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent/20 text-accent border border-accent/30 hover:bg-accent/30 transition-all text-sm font-bold disabled:opacity-50"
           >
-            {isSynthesizing ? (
-              <><Sparkles className="animate-spin" size={18} /> Processing...</>
-            ) : (
-              <><Brain size={18} /> Generate Knowledge Base</>
-            )}
+            {isAiSummarizing ? <><Sparkles className="animate-spin" size={16} /> Summarizing...</> : <><Sparkles size={16} /> Quick Summarize</>}
+          </button>
+          <button
+            onClick={handleGenerateQuiz}
+            disabled={isGeneratingQuiz || !inputText.trim()}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary/20 text-secondary border border-secondary/30 hover:bg-secondary/30 transition-all text-sm font-bold disabled:opacity-50"
+          >
+            {isGeneratingQuiz ? <><FileQuestion className="animate-spin" size={16} /> Generating...</> : <><FileQuestion size={16} /> Generate Quiz</>}
+          </button>
+          <button className="btn-primary" onClick={handleSynthesize} disabled={isSynthesizing || !inputText.trim()}>
+            {isSynthesizing ? <><Sparkles className="animate-spin" size={18} /> Processing...</> : <><Brain size={18} /> Full Synthesis</>}
           </button>
         </div>
       </div>
@@ -352,6 +391,89 @@ Conclusion
           )}
         </div>
       </div>
+
+      {/* AI Summary / Quiz Panel */}
+      {showAiPanel !== 'none' && (
+        <div className="glass-card p-8 border-accent/20">
+          {showAiPanel === 'summary' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold flex items-center gap-2 text-accent"><Sparkles size={20} /> AI Quick Summary</h3>
+                <button onClick={() => setShowAiPanel('none')} className="text-white/40 hover:text-white text-xs uppercase tracking-widest">← Back</button>
+              </div>
+              {isAiSummarizing ? (
+                <div className="flex items-center gap-3 text-accent animate-pulse"><Brain className="animate-bounce" size={30} /><span className="font-bold uppercase tracking-widest text-sm">Analyzing content...</span></div>
+              ) : aiSummary && (
+                <div className="space-y-6">
+                  <div className="p-6 bg-accent/5 border border-accent/20 rounded-2xl">
+                    <p className="text-[10px] font-bold text-accent uppercase tracking-widest mb-3">Core Summary</p>
+                    <p className="text-sm text-white/80 leading-relaxed">{aiSummary.summary}</p>
+                  </div>
+                  {aiSummary.keyPoints?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-3">Key Points</p>
+                      <ul className="space-y-2">{aiSummary.keyPoints.map((pt: string, i: number) => <li key={i} className="flex gap-3 text-sm text-white/70"><span className="text-primary mt-1">▸</span>{pt}</li>)}</ul>
+                    </div>
+                  )}
+                  {aiSummary.importantTerms?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-3">Important Terms</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{aiSummary.importantTerms.map((t: any, i: number) => <div key={i} className="p-3 glass rounded-xl border border-white/5"><p className="font-bold text-sm text-secondary">{t.term}</p><p className="text-xs text-white/50 mt-1">{t.definition}</p></div>)}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {showAiPanel === 'quiz' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold flex items-center gap-2 text-secondary"><FileQuestion size={20} /> AI Generated Quiz</h3>
+                <button onClick={() => setShowAiPanel('none')} className="text-white/40 hover:text-white text-xs uppercase tracking-widest">← Back</button>
+              </div>
+              {isGeneratingQuiz ? (
+                <div className="flex items-center gap-3 text-secondary animate-pulse"><Sparkles className="animate-bounce" size={30} /><span className="font-bold uppercase tracking-widest text-sm">Generating questions...</span></div>
+              ) : aiQuiz.length > 0 ? (
+                <div className="space-y-6">
+                  {aiQuiz.map((q, qi) => (
+                    <div key={qi} className="glass p-6 rounded-2xl border border-white/5 space-y-4">
+                      <p className="font-bold">Q{qi + 1}: {q.question}</p>
+                      <div className="space-y-2">
+                        {q.options.map((opt: string, oi: number) => {
+                          const isSelected = quizAnswers[qi] === oi;
+                          const isCorrect = q.correctIndex === oi;
+                          let btnClass = 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10';
+                          if (quizSubmitted) {
+                            if (isCorrect) btnClass = 'bg-accent/20 border-accent/50 text-accent font-bold';
+                            else if (isSelected && !isCorrect) btnClass = 'bg-red-500/20 border-red-500/40 text-red-400';
+                          } else if (isSelected) btnClass = 'bg-primary/20 border-primary/50 text-primary';
+                          return (
+                            <button key={oi} disabled={quizSubmitted} onClick={() => setQuizAnswers(a => ({...a, [qi]: oi}))} className={`w-full text-left p-3 rounded-xl border text-sm transition-all ${btnClass}`}>
+                              {String.fromCharCode(65 + oi)}. {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  {!quizSubmitted ? (
+                    <button onClick={() => setQuizSubmitted(true)} disabled={Object.keys(quizAnswers).length < aiQuiz.length} className="w-full py-4 bg-secondary/20 text-secondary border border-secondary/30 rounded-2xl font-bold uppercase tracking-widest text-sm hover:bg-secondary/30 transition-all disabled:opacity-40">
+                      Submit Quiz
+                    </button>
+                  ) : (
+                    <div className="p-6 bg-accent/10 border border-accent/30 rounded-2xl text-center">
+                      <p className="text-2xl font-bold text-accent">{Object.entries(quizAnswers).filter(([qi, ai]) => ai === aiQuiz[Number(qi)]?.correctIndex).length} / {aiQuiz.length}</p>
+                      <p className="text-sm text-white/60 mt-1">Questions Correct</p>
+                      <button onClick={() => { setQuizAnswers({}); setQuizSubmitted(false); }} className="mt-4 px-6 py-2 glass rounded-xl text-xs font-bold uppercase tracking-widest text-white/60 hover:text-white">Retry Quiz</button>
+                    </div>
+                  )}
+                </div>
+              ) : <p className="text-white/40 text-sm">No questions generated yet.</p>}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

@@ -159,7 +159,7 @@ const AssignmentManager: React.FC = () => {
           </p>
         </div>
         {isStaff && (
-          <NeonButton onClick={() => setShowCreateModal(true)} className="pr-8 shadow-[0_0_20px_rgba(59,130,246,0.2)]">
+          <NeonButton onClick={() => setShowCreateModal(true)} className="pr-8 text-accent border-accent/40 hover:bg-accent/10 shadow-[0_0_20px_rgba(0,210,255,0.15)]">
             <Plus size={18} /> Deploy New Task
           </NeonButton>
         )}
@@ -259,9 +259,13 @@ const AssignmentManager: React.FC = () => {
                            <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest italic">Characters: {submissionContent.length} / 5000</span>
                         </div>
                         <textarea
-                          placeholder="Paste your analysis or code segment here..."
+                          placeholder="Type your analysis or answer here... (copy-paste is disabled)"
                           value={submissionContent}
                           onChange={(e) => setSubmissionContent(e.target.value)}
+                          onPaste={(e) => { e.preventDefault(); addToast('Copy-paste is disabled. Please type your own work.', 'ERROR'); }}
+                          onCopy={(e) => { e.preventDefault(); addToast('Copying is disabled in this terminal.', 'ERROR'); }}
+                          onCut={(e) => { e.preventDefault(); }}
+                          onDrop={(e) => { e.preventDefault(); addToast('Drag-drop is disabled. Type your answer.', 'ERROR'); }}
                           className="w-full h-64 bg-black/40 border border-white/10 rounded-3xl p-6 font-mono text-xs text-primary/80 outline-none focus:border-primary/40 transition-all resize-none shadow-inner"
                         />
                         <NeonButton 
