@@ -32,7 +32,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
   initSocket: (userId: string) => {
     if (get().socket) return;
 
-    const socket = io('http://localhost:3001');
+    const socket = io('');
 
     socket.on('connect', () => {
       set({ isConnected: true, socket });

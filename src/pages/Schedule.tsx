@@ -19,7 +19,7 @@ const Schedule: React.FC = () => {
 
   const fetchSchedule = async () => {
     try {
-      const res = await fetch(`http://localhost:3001/api/schedule?dept=${user?.department || 'CSE'}`);
+      const res = await fetch(`/api/schedule?dept=${user?.department || 'CSE'}`);
       if (res.ok) setEvents(await res.json());
     } catch (e) {
       console.error('Failed to fetch schedule:', e);
@@ -29,7 +29,7 @@ const Schedule: React.FC = () => {
   const handleAddEvent = async () => {
     if (!newEvent.title || !newEvent.time) return;
     try {
-      const res = await fetch('http://localhost:3001/api/schedule', {
+      const res = await fetch('/api/schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...newEvent, dept: user?.department || 'CSE' })

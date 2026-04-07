@@ -11,8 +11,8 @@ window.fetch = async function(...args: any[]) {
   let finalResource = resource;
   
   // Normalize local API URL if needed
-  if (typeof resource === 'string' && resource.startsWith('http://localhost:3001')) {
-    finalResource = resource.replace('http://localhost:3001', '');
+  if (typeof resource === 'string' && resource.startsWith('')) {
+    finalResource = resource.replace('', '');
   }
   
   // Inject JWT if available

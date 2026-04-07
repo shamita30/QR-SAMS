@@ -19,7 +19,7 @@ const SkillBadges: React.FC = () => {
 
   const fetchBadges = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/badges');
+      const res = await fetch('/api/badges');
       if (res.ok) setBadges(await res.json());
       else {
         // Fallback for demo if API fails

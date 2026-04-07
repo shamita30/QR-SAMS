@@ -15,7 +15,7 @@ const MyClasses: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let url = 'http://localhost:3001/api/courses';
+    let url = '/api/courses';
     if (user?.role === 'FACULTY') {
       url += `?facultyId=${user.id}`;
     } else if (user?.role === 'HOD') {

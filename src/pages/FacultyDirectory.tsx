@@ -18,7 +18,7 @@ const FacultyDirectory: React.FC = () => {
 
   React.useEffect(() => {
     if (isHOD && user?.department) {
-      fetch(`http://localhost:3001/api/hod/faculty-workload?dept=${user.department}`)
+      fetch(`/api/hod/faculty-workload?dept=${user.department}`)
         .then(res => res.json())
         .then(data => setWorkload(data))
         .catch(console.error);

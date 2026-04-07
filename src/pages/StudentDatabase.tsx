@@ -11,7 +11,7 @@ const StudentDatabase: React.FC = () => {
   const [students, setStudents] = useState<any[]>([]);
 
   React.useEffect(() => {
-    fetch(`http://localhost:3001/api/users?dept=${user?.department || 'CSE'}`)
+    fetch(`/api/users?dept=${user?.department || 'CSE'}`)
       .then(res => res.json())
       .then(data => {
         const studentUsers = data.filter((u: any) => u.role === 'STUDENT');
@@ -28,7 +28,7 @@ const StudentDatabase: React.FC = () => {
   }, [user]);
 
   const handleExport = () => {
-    window.open(`http://localhost:3001/api/reports/export?type=students&department=${user?.department || 'CSE'}`);
+    window.open(`/api/reports/export?type=students&department=${user?.department || 'CSE'}`);
   };
 
   return (

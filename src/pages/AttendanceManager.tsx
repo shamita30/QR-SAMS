@@ -35,7 +35,7 @@ const AttendanceManager: React.FC = () => {
 
   useEffect(() => {
     if (activeSessionCourseId) {
-      fetch(`http://localhost:3001/api/courses/${activeSessionCourseId}/analytics`)
+      fetch(`/api/courses/${activeSessionCourseId}/analytics`)
         .then(res => res.json())
         .then(data => setAnalytics(data))
         .catch(console.error);
@@ -76,11 +76,11 @@ const AttendanceManager: React.FC = () => {
 
   const fetchCourses = async () => {
     try {
-      let url = 'http://localhost:3001/api/courses';
+      let url = '/api/courses';
       if (isFaculty) {
-        url = `http://localhost:3001/api/courses?facultyId=${user?.id}`;
+        url = `/api/courses?facultyId=${user?.id}`;
       } else if (isHOD) {
-        url = `http://localhost:3001/api/courses?dept=${dept}`;
+        url = `/api/courses?dept=${dept}`;
       }
       const res = await fetch(url);
       if (res.ok) setCourses(await res.json());
@@ -109,7 +109,7 @@ const AttendanceManager: React.FC = () => {
   const startSession = async (courseId: string) => {
     try {
       const { latitude, longitude } = await getGeoLocation();
-      const res = await fetch('http://localhost:3001/api/attendance/session/start', {
+      const res = await fetch('/api/attendance/session/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ courseId, facultyId: user?.id, department: dept, latitude, longitude })
@@ -137,7 +137,7 @@ const AttendanceManager: React.FC = () => {
   const stopSession = async () => {
     if (!activeSessionId) return;
     try {
-      const res = await fetch('http://localhost:3001/api/attendance/session/stop', {
+      const res = await fetch('/api/attendance/session/stop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: activeSessionId })
@@ -158,7 +158,7 @@ const AttendanceManager: React.FC = () => {
   const refreshToken = useCallback(async () => {
     if (!activeSessionId) return;
     try {
-      const res = await fetch('http://localhost:3001/api/attendance/session/refresh', {
+      const res = await fetch('/api/attendance/session/refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId: activeSessionId })
@@ -196,7 +196,7 @@ const AttendanceManager: React.FC = () => {
 
   const fetchSessionRecords = async (sessionId: string) => {
     try {
-      const res = await fetch(`http://localhost:3001/api/attendance/session/${sessionId}/records`);
+      const res = await fetch(`/api/attendance/session/${sessionId}/records`);
       if (res.ok) {
         const records = await res.json();
         setLiveRecords(records.map((r: any) => ({

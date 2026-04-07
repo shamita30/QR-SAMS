@@ -21,7 +21,7 @@ const BookSwap: React.FC = () => {
 
   const fetchBooks = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/books');
+      const res = await fetch('/api/books');
       if (res.ok) setBooks(await res.json());
     } catch(e) { console.error(e); }
   };
@@ -29,7 +29,7 @@ const BookSwap: React.FC = () => {
   const handleAddBook = async () => {
     if (!newBook.title || !newBook.author) return;
     try {
-      const res = await fetch('http://localhost:3001/api/books', {
+      const res = await fetch('/api/books', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...newBook, ownerId: user?.id })
@@ -44,7 +44,7 @@ const BookSwap: React.FC = () => {
 
   const handleRequestTrade = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:3001/api/books/${id}`, {
+      const res = await fetch(`/api/books/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'REQUESTED', requestorId: user?.id })

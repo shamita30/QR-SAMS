@@ -31,7 +31,7 @@ const UserManagement: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const url = isAdmin ? 'http://localhost:3001/api/admin/users' : `http://localhost:3001/api/users${isHOD ? `?dept=${user.department}` : ''}`;
+      const url = isAdmin ? '/api/admin/users' : `/api/users${isHOD ? `?dept=${user.department}` : ''}`;
       const res = await fetch(url);
       if (res.ok) setUsers(await res.json());
     } catch (e) {
@@ -42,7 +42,7 @@ const UserManagement: React.FC = () => {
   const handleDelete = async (userId: string) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     try {
-      const res = await fetch(`http://localhost:3001/api/users/${userId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
       if (res.ok) {
         fetchUsers();
         addToast('User deleted successfully', 'SUCCESS');
@@ -58,7 +58,7 @@ const UserManagement: React.FC = () => {
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3001/api/users', {
+      const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newUser)
@@ -81,7 +81,7 @@ const UserManagement: React.FC = () => {
     e.preventDefault();
     if (!editingUser) return;
     try {
-      const res = await fetch(`http://localhost:3001/api/users/${editingUser.id}`, {
+      const res = await fetch(`/api/users/${editingUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

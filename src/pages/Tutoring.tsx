@@ -26,7 +26,7 @@ const Tutoring: React.FC = () => {
 
   const fetchTutors = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/tutoring/tutors');
+      const res = await fetch('/api/tutoring/tutors');
       if (res.ok) setTutors(await res.json());
       else {
         setTutors([
@@ -42,7 +42,7 @@ const Tutoring: React.FC = () => {
 
   const fetchRequests = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/tutoring/requests');
+      const res = await fetch('/api/tutoring/requests');
       if (res.ok) setRequests(await res.json());
     } catch (e) {
       console.error('Failed to fetch tutoring requests:', e);
@@ -52,7 +52,7 @@ const Tutoring: React.FC = () => {
   const handleBroadcastRequest = async () => {
     if (!newTopic.trim()) return;
     try {
-      const res = await fetch('http://localhost:3001/api/tutoring', {
+      const res = await fetch('/api/tutoring', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentId: user?.id, topic: newTopic })
@@ -70,7 +70,7 @@ const Tutoring: React.FC = () => {
 
   const handleAcceptRequest = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:3001/api/tutoring/${id}`, {
+      const res = await fetch(`/api/tutoring/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'ACCEPTED' })

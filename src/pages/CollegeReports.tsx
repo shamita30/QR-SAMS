@@ -13,7 +13,7 @@ const CollegeReports: React.FC = () => {
 
   React.useEffect(() => {
     if (isHOD && user?.department) {
-      fetch(`http://localhost:3001/api/hod/analytics?dept=${user.department}`)
+      fetch(`/api/hod/analytics?dept=${user.department}`)
         .then(res => res.json())
         .then(data => setHodAnalytics(data))
         .catch(console.error);
@@ -21,7 +21,7 @@ const CollegeReports: React.FC = () => {
   }, [isHOD, user]);
 
   const handleExport = () => {
-    window.open(`http://localhost:3001/api/reports/export?type=faculty&department=${user?.department || 'CSE'}`);
+    window.open(`/api/reports/export?type=faculty&department=${user?.department || 'CSE'}`);
   };
 
   const reports = [

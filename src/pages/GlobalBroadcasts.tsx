@@ -22,7 +22,7 @@ const GlobalBroadcasts: React.FC = () => {
 
   const fetchBroadcasts = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/broadcasts');
+      const res = await fetch('/api/broadcasts');
       if (res.ok) setMessages(await res.json());
     } catch (e) {
       console.error('Failed to fetch broadcasts');
@@ -33,7 +33,7 @@ const GlobalBroadcasts: React.FC = () => {
     if (!newTitle.trim() || !newContent.trim()) return;
     setIsPublishing(true);
     try {
-      const res = await fetch('http://localhost:3001/api/broadcasts', {
+      const res = await fetch('/api/broadcasts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

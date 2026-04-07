@@ -23,8 +23,8 @@ const StudyQuest: React.FC = () => {
   const fetchStats = async () => {
     if (!user) return;
     try {
-      const sRes = await fetch(`http://localhost:3001/api/user/stats/${user.id}`);
-      const pRes = await fetch(`http://localhost:3001/api/study-quest/progress/${user.id}`);
+      const sRes = await fetch(`/api/user/stats/${user.id}`);
+      const pRes = await fetch(`/api/study-quest/progress/${user.id}`);
       if (sRes.ok) setUserStats(await sRes.ok ? await sRes.json() : { xp: 0, streak: 0 });
       if (pRes.ok) {
         const progress = await pRes.json();
@@ -49,7 +49,7 @@ const StudyQuest: React.FC = () => {
   const handleCompleteNode = async (nodeId: number) => {
     if (!user) return;
     try {
-      const res = await fetch('http://localhost:3001/api/study-quest/complete-node', {
+      const res = await fetch('/api/study-quest/complete-node', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, nodeId, xp: 250 })

@@ -164,7 +164,7 @@ const SettingsPage: React.FC = () => {
                     <p className="text-sm text-red-400/80 mb-6 leading-relaxed">Create instant back-ups of the primary SQLite engine for disaster recovery. This action locks transactions momentarily.</p>
                     <div className="flex gap-4">
                       <button 
-                        onClick={() => window.open('http://localhost:3001/api/admin/backup', '_blank')}
+                        onClick={() => window.open('/api/admin/backup', '_blank')}
                         className="btn-primary py-3 px-6 bg-red-500 hover:bg-red-600 text-white flex items-center gap-2 border-red-400 font-bold"
                       >
                         <Download size={18} /> Download Master Database

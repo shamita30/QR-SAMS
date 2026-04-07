@@ -17,7 +17,7 @@ const DatabaseExplorer: React.FC = () => {
 
   React.useEffect(() => {
     if (activeTable === 'action_logs') {
-      fetch('http://localhost:3001/api/admin/logs')
+      fetch('/api/admin/logs')
         .then(res => res.json())
         .then(data => setLogs(data))
         .catch(console.error);
@@ -30,7 +30,7 @@ const DatabaseExplorer: React.FC = () => {
     const q = customQuery || query;
     const start = performance.now();
     try {
-      const res = await fetch('http://localhost:3001/api/admin/query', {
+      const res = await fetch('/api/admin/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: q })

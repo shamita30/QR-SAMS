@@ -1,6 +1,6 @@
 import { useAuthStore } from '../store/useAuthStore';
 
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = '';
 
 export const api = {
   async fetch(endpoint: string, options: RequestInit = {}) {

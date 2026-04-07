@@ -24,7 +24,7 @@ const StudyArea: React.FC = () => {
 
   useEffect(() => {
     if (user?.id) {
-      fetch(`http://localhost:3001/api/student/${user.id}/recommendations`)
+      fetch(`/api/student/${user.id}/recommendations`)
         .then(res => res.json())
         .then(data => setRecommendations(data))
         .catch(console.error);

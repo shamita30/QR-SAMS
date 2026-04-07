@@ -16,7 +16,7 @@ const StudentPortal: React.FC = () => {
 
   React.useEffect(() => {
     if (user?.id) {
-      fetch(`http://localhost:3001/api/student/${user.id}/insights`)
+      fetch(`/api/student/${user.id}/insights`)
         .then(res => res.json())
         .then(data => setInsights(data))
         .catch(console.error);
@@ -26,7 +26,7 @@ const StudentPortal: React.FC = () => {
   const handleDownloadHistory = () => {
     addToast('Downloading academic history...', 'LOADING');
     setTimeout(() => {
-      window.open(`http://localhost:3001/api/student/${user?.id}/export`, '_blank');
+      window.open(`/api/student/${user?.id}/export`, '_blank');
       addToast('Download started successfully!', 'SUCCESS');
     }, 1000);
   };

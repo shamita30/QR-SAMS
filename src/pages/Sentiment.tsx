@@ -21,7 +21,7 @@ const Sentiment: React.FC = () => {
 
   const fetchSentiment = async () => {
     try {
-      const res = await fetch(`http://localhost:3001/api/sentiment?department=${dept}`);
+      const res = await fetch(`/api/sentiment?department=${dept}`);
       if (res.ok) setData(await res.json());
     } catch (e) {
       console.error('Failed to fetch sentiment:', e);

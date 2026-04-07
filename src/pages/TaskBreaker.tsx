@@ -23,7 +23,7 @@ const TaskBreaker: React.FC = () => {
   const fetchTasks = async () => {
     if (!user) return;
     try {
-      const res = await fetch(`http://localhost:3001/api/tasks/${user.id}`);
+      const res = await fetch(`/api/tasks/${user.id}`);
       if (res.ok) setTasks(await res.json());
     } catch(e) { console.error(e); }
   };
@@ -32,7 +32,7 @@ const TaskBreaker: React.FC = () => {
     e.preventDefault();
     if (!newTask.trim() || !user) return;
     try {
-      const res = await fetch('http://localhost:3001/api/tasks', {
+      const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, title: newTask })
@@ -47,7 +47,7 @@ const TaskBreaker: React.FC = () => {
 
   const handleToggleTask = async (id: string, isDone: boolean) => {
     try {
-      await fetch(`http://localhost:3001/api/tasks/${id}`, {
+      await fetch(`/api/tasks/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: isDone ? 'PENDING' : 'COMPLETED' })
