@@ -339,9 +339,11 @@ try { db.exec("ALTER TABLE attendance ADD COLUMN latitude REAL"); } catch(e) {}
 try { db.exec("ALTER TABLE attendance ADD COLUMN longitude REAL"); } catch(e) {}
 try { db.exec("ALTER TABLE users ADD COLUMN phone_number TEXT"); } catch(e) {}
 try { db.exec("ALTER TABLE users ADD COLUMN parent_phone TEXT"); } catch(e) {}
+try { db.exec("ALTER TABLE attendance ADD COLUMN od_letter_url TEXT"); } catch(e) {}
 
 // Helper for Haversine distance
-function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
+function getDistanceInMeters(lat1: number | null, lon1: number | null, lat2: number | null, lon2: number | null) {
+  if (lat1 === null || lon1 === null || lat2 === null || lon2 === null) return null;
   const R = 6371e3; // metres
   const \u03c61 = lat1 * Math.PI/180;
   const \u03c62 = lat2 * Math.PI/180;
@@ -1368,31 +1370,54 @@ function triggerAbsenceNotification(studentId: string, sessionId: string, reason
   });
 }
 
-// Manual Marking - Absent
-app.post('/api/attendance/mark-absent', (req, res) => {
-  const { sessionId, studentId } = req.body;
+// Manual Marking - Status Override
+app.post('/api/attendance/mark-status', (req, res) => {
+  const { sessionId, studentId, status, odLetterUrl } = req.body;
   const id = uuidv4();
   try {
-     db.prepare("INSERT OR REPLACE INTO attendance (id, session_id, user_id, status) VALUES (?, ?, ?, 'ABSENT')").run(id, sessionId, studentId);
-     triggerAbsenceNotification(studentId, sessionId, 'MANUAL_FACULTY_MARK');
+     db.prepare("INSERT OR REPLACE INTO attendance (id, session_id, user_id, status, od_letter_url) VALUES (?, ?, ?, ?, ?)").run(id, sessionId, studentId, status, odLetterUrl || null);
+     
+     if (status === 'ABSENT') {
+        triggerAbsenceNotification(studentId, sessionId, 'MANUAL_FACULTY_MARK');
+     }
+     
      res.json({ success: true });
   } catch (e) {
-     res.status(500).json({ error: 'Failed to record absence' });
+     res.status(500).json({ error: 'Failed to update attendance status' });
+  }
+});
+
+// Student OD Submission
+app.post('/api/attendance/od-submit', (req, res) => {
+  const { sessionId, userId, odLetterUrl, latitude, longitude } = req.body;
+  if (!sessionId || !userId || !odLetterUrl) return res.status(400).json({ error: 'Missing OD details' });
+  
+  const id = uuidv4();
+  try {
+    db.prepare(`
+      INSERT OR REPLACE INTO attendance (id, session_id, user_id, status, od_letter_url, latitude, longitude) 
+      VALUES (?, ?, ?, 'OD_PENDING', ?, ?, ?)
+    `).run(id, sessionId, userId, odLetterUrl, latitude || null, longitude || null);
+    
+    res.json({ success: true, message: 'OD Request submitted for review.' });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to submit OD request.' });
   }
 });
 
 // Manual Attendance Entry by Faculty
 app.post('/api/attendance/manual', (req, res) => {
-  const { sessionId, studentId, facultyId } = req.body;
+  const { sessionId, studentId, status, odLetterUrl } = req.body;
+  const targetStatus = status || 'PRESENT_MANUAL';
+  
   if (!sessionId || !studentId) return res.status(400).json({ error: 'sessionId and studentId required' });
   const id = uuidv4();
   try {
-    db.prepare("INSERT OR IGNORE INTO attendance (id, session_id, user_id, status) VALUES (?, ?, ?, 'PRESENT_MANUAL')").run(id, sessionId, studentId);
+    db.prepare("INSERT OR REPLACE INTO attendance (id, session_id, user_id, status, od_letter_url) VALUES (?, ?, ?, ?, ?)").run(id, sessionId, studentId, targetStatus, odLetterUrl || null);
     const student = db.prepare("SELECT name FROM users WHERE id = ?").get(studentId) as any;
-    broadcastEvent('ATTENDANCE_MARKED', { sessionId, studentId, studentName: student?.name || studentId, timestamp: new Date().toISOString(), manual: true });
+    broadcastEvent('ATTENDANCE_MARKED', { sessionId, studentId, studentName: student?.name || studentId, timestamp: new Date().toISOString(), manual: true, status: targetStatus });
     res.json({ success: true, studentName: student?.name });
   } catch (e: any) {
-    if (e.message?.includes('UNIQUE')) return res.status(409).json({ error: 'Attendance already marked for this student.' });
     res.status(500).json({ error: 'Failed to record manual attendance.' });
   }
 });
@@ -1443,8 +1468,10 @@ app.post('/api/attendance/mark', (req, res) => {
   // but if both exist, verify distance is <= 150m)
   if (session.latitude && session.longitude && latitude && longitude) {
     const distance = getDistanceInMeters(session.latitude, session.longitude, latitude, longitude);
-    if (distance > 50) { // 50 meters radius
-      return res.status(403).json({ error: `You are too far! You are ${Math.round(distance)}m away. You must be within 50m.` });
+    
+    // Proximity check (e.g. 500m)
+    if (distance === null || distance > 500) {
+      return res.status(403).json({ error: `You are too far from the session location (${distance ? Math.round(distance) : 'Unknown'}m)` });
     }
   }
   // The else if block blocking missing locations has been removed to allow fallback testing
@@ -1478,15 +1505,20 @@ app.post('/api/attendance/mark', (req, res) => {
   res.json({ success: true, courseName: session.course_id, studentName: student.name });
 });
 
-// Get attendance records for a specific session
+// 4. GET Session Records (Now with Geo & OD Letter)
 app.get('/api/attendance/session/:sessionId/records', (req, res) => {
-  const records = db.prepare(`
-    SELECT a.*, u.name as student_name, u.department 
-    FROM attendance a 
-    JOIN users u ON a.user_id = u.id 
-    WHERE a.session_id = ?
-  `).all(req.params.sessionId);
-  res.json(records);
+  const { sessionId } = req.params;
+  try {
+     const records = db.prepare(`
+       SELECT a.*, u.name as student_name, u.department 
+       FROM attendance a 
+       JOIN users u ON a.user_id = u.id 
+       WHERE a.session_id = ?
+     `).all(sessionId);
+     res.json(records);
+  } catch (e) {
+     res.status(500).json({ error: 'Failed to fetch records' });
+  }
 });
 
 // Get ALL students enrolled in a course (Roster)

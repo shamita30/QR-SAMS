@@ -2,14 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Users, Calendar, Search, 
   QrCode, Square, Play, CheckCircle, Wifi, UserCheck, AlertCircle, BarChart, Copy, RefreshCw, Keyboard, X,
-  PhoneCall, MessageSquare, Volume2
+  MessageSquare, Volume2
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
-
-
 
 const AttendanceManager: React.FC = () => {
   const { user } = useAuthStore();
@@ -26,6 +24,7 @@ const AttendanceManager: React.FC = () => {
   const [analytics, setAnalytics] = useState<any>(null);
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualStudentId, setManualStudentId] = useState('');
+  const [manualStatus, setManualStatus] = useState<'PRESENT' | 'ABSENT' | 'ON_DUTY'>('PRESENT');
   const [roster, setRoster] = useState<any[]>([]);
   const [showRoster, setShowRoster] = useState(false);
 
@@ -167,6 +166,23 @@ const AttendanceManager: React.FC = () => {
     }
   };
 
+  const markStatus = async (studentId: string, status: string) => {
+    if (!activeSessionId) return;
+    try {
+      const res = await fetch('/api/attendance/mark-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: activeSessionId, studentId, status })
+      });
+      if (res.ok) {
+        addToast(`Identity protocol updated to ${status}`, 'SUCCESS');
+        fetchSessionRecords(activeSessionId);
+      }
+    } catch (e) {
+      addToast('Command transmission failed', 'ERROR');
+    }
+  };
+
   const stopSession = async () => {
     if (!activeSessionId) return;
     try {
@@ -242,6 +258,20 @@ const AttendanceManager: React.FC = () => {
     } catch (e) {
       console.error('Failed to fetch session records:', e);
     }
+  };
+
+  const getDistance = (lat1: number | null, lon1: number | null, lat2: number | null, lon2: number | null) => {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+    const R = 6371e3;
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // in meters
   };
 
   const markUrl = sessionToken ? `${window.location.origin}/mark-attendance?token=${sessionToken}` : '';
@@ -371,42 +401,79 @@ const AttendanceManager: React.FC = () => {
 
               {showRoster ? (
                 <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
-                   {roster.map(student => {
-                     const isPresent = liveRecords.find(r => r.studentId === student.id);
-                     return (
-                       <div key={student.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isPresent ? 'bg-green-500/5 border-green-500/20' : 'bg-white/5 border-white/5'}`}>
-                         <div className="flex items-center gap-3">
-                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${isPresent ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/40'}`}>
-                             {student.name.charAt(0)}
-                           </div>
-                           <div>
-                             <p className={`font-bold text-sm ${isPresent ? 'text-white' : 'text-white/40'}`}>{student.name}</p>
-                             <p className="text-[10px] text-white/20 uppercase tracking-widest">{student.id}</p>
-                           </div>
-                         </div>
-                         
-                         {isPresent ? (
-                            <div className="flex items-center gap-2 text-green-400 text-[10px] font-bold uppercase">
-                               <CheckCircle size={14} /> Verified
+                    {roster.map(student => {
+                      const record = liveRecords.find(r => r.studentId === student.id);
+                      const isPresent = record?.status?.includes('PRESENT');
+                      const isOD = record?.status === 'ON_DUTY' || record?.status === 'OD_PENDING';
+                      const isAbsent = record?.status === 'ABSENT';
+                      
+                      return (
+                        <div key={student.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                          isPresent ? 'bg-green-500/10 border-green-500/20 shadow-lg shadow-green-500/5' : 
+                          isOD ? 'bg-blue-500/10 border-blue-500/20 shadow-lg shadow-blue-500/5' :
+                          isAbsent ? 'bg-red-500/10 border-red-500/20' :
+                          'bg-white/5 border-white/5'
+                        }`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                              isPresent ? 'bg-green-500/20 text-green-400' : 
+                              isOD ? 'bg-blue-500/20 text-blue-400' :
+                              isAbsent ? 'bg-red-500/20 text-red-400' : 
+                              'bg-white/10 text-white/40'
+                            }`}>
+                              {student.name.charAt(0)}
                             </div>
-                         ) : (
-                            <button 
-                              onClick={async () => {
-                                const res = await fetch('/api/attendance/mark-absent', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ sessionId: activeSessionId, studentId: student.id })
-                                });
-                                if (res.ok) addToast(`AI Call Triggered for ${student.name}`, 'INFO');
-                              }}
-                              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all text-[9px] font-bold uppercase tracking-wider"
-                            >
-                               <PhoneCall size={12} /> Mark Absent & Call AI
-                            </button>
-                         )}
-                       </div>
-                     );
-                   })}
+                            <div>
+                              <p className={`font-bold text-sm ${isPresent || isOD || isAbsent ? 'text-white' : 'text-white/40'}`}>
+                                {student.name}
+                                {record?.status === 'OD_PENDING' && (
+                                   <span className="ml-2 px-1.5 py-0.5 rounded bg-blue-500 text-white text-[8px] font-bold animate-pulse">OD REQ</span>
+                                )}
+                              </p>
+                              <p className="text-[10px] text-white/20 uppercase tracking-widest leading-relaxed">
+                                {student.id} 
+                                {record?.od_letter_url && <a href={record.od_letter_url} target="_blank" className="ml-2 text-primary hover:underline font-bold">View Letter</a>}
+                                {record?.latitude && activeCourse && (
+                                  (() => {
+                                    const dist = getDistance(activeSessionId ? courses.find(c => c.id === activeSessionCourseId)?.latitude : null, 
+                                                            activeSessionId ? courses.find(c => c.id === activeSessionCourseId)?.longitude : null, 
+                                                            record.latitude, record.longitude);
+                                    if (dist === null) return null;
+                                    const isTooFar = dist > 150;
+                                    return (
+                                      <span className={`ml-3 px-2 py-0.5 rounded-full text-[8px] font-bold ${isTooFar ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-green-500/10 text-green-400'}`}>
+                                        {isTooFar ? 'PROXY ALERT: ' : ''}{Math.round(dist)}m away
+                                      </span>
+                                    );
+                                  })()
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                             <button
+                               onClick={() => markStatus(student.id, 'PRESENT')}
+                               className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${isPresent ? 'bg-green-500 text-white' : 'bg-white/5 text-white/40 hover:bg-green-500/20'}`}
+                             >
+                               Present
+                             </button>
+                             <button
+                               onClick={() => markStatus(student.id, 'ON_DUTY')}
+                               className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${isOD ? 'bg-blue-500 text-white' : 'bg-white/5 text-white/40 hover:bg-blue-500/20'}`}
+                             >
+                               {record?.status === 'OD_PENDING' ? 'Approve OD' : 'OD'}
+                             </button>
+                             <button
+                               onClick={() => markStatus(student.id, 'ABSENT')}
+                               className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${isAbsent ? 'bg-red-500 text-white' : 'bg-white/5 text-white/40 hover:bg-red-500/20'}`}
+                             >
+                               Absent
+                             </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               ) : (
                 <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
@@ -582,6 +649,18 @@ const AttendanceManager: React.FC = () => {
                     autoFocus
                   />
                 </div>
+                <div>
+                  <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] ml-2">Status Payload</label>
+                  <select
+                    value={manualStatus}
+                    onChange={(e) => setManualStatus(e.target.value as any)}
+                    className="w-full bg-white/5 border border-yellow-500/30 rounded-2xl p-4 outline-none focus:border-yellow-500/60 text-sm font-bold mt-1 appearance-none"
+                  >
+                    <option value="PRESENT" className="bg-background">Present (Manual)</option>
+                    <option value="ON_DUTY" className="bg-background">On Duty (OD)</option>
+                    <option value="ABSENT" className="bg-background">Absent (Trigger AI)</option>
+                  </select>
+                </div>
                 <div className="flex gap-3 pt-2">
                   <button
                     disabled={!manualStudentId.trim()}
@@ -591,13 +670,14 @@ const AttendanceManager: React.FC = () => {
                         const res = await fetch('/api/attendance/manual', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ sessionId: activeSessionId, studentId: manualStudentId.trim(), facultyId: user?.id })
+                          body: JSON.stringify({ sessionId: activeSessionId, studentId: manualStudentId.trim(), status: manualStatus })
                         });
                         const data = await res.json();
                         if (res.ok) {
-                          addToast(`✓ Manually marked: ${data.studentName || manualStudentId}`, 'SUCCESS');
+                          addToast(`✓ Identity recorded as ${manualStatus}: ${data.studentName || manualStudentId}`, 'SUCCESS');
                           setManualStudentId('');
                           setShowManualModal(false);
+                          fetchSessionRecords(activeSessionId);
                         } else {
                           addToast(data.error || 'Failed to mark manually.', 'ERROR');
                         }
@@ -605,7 +685,7 @@ const AttendanceManager: React.FC = () => {
                     }}
                     className="flex-1 py-3 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-2xl font-bold text-sm uppercase tracking-widest hover:bg-yellow-500/30 transition-all disabled:opacity-40"
                   >
-                    Mark Present
+                    Execute Command
                   </button>
                   <button onClick={() => setShowManualModal(false)} className="px-6 glass rounded-2xl text-xs font-bold uppercase tracking-widest text-white/30 hover:text-white transition-all">Cancel</button>
                 </div>
