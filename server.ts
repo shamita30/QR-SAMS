@@ -1191,8 +1191,8 @@ app.post('/api/attendance/mark', (req, res) => {
   // but if both exist, verify distance is <= 150m)
   if (session.latitude && session.longitude && latitude && longitude) {
     const distance = getDistanceInMeters(session.latitude, session.longitude, latitude, longitude);
-    if (distance > 150) { // 150 meters radius
-      return res.status(403).json({ error: `You are too far from the classroom (${Math.round(distance)}m). You must be within 150m.` });
+    if (distance > 50) { // 50 meters radius
+      return res.status(403).json({ error: `You are too far! You are ${Math.round(distance)}m away. You must be within 50m.` });
     }
   }
   // The else if block blocking missing locations has been removed to allow fallback testing
