@@ -24,7 +24,7 @@ const AttendanceManager: React.FC = () => {
   const [countdown, setCountdown] = useState(30);
   const [analytics, setAnalytics] = useState<any>(null);
 
-  const wsRef = useRef<WebSocket | null>(null);
+  const wsRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -48,30 +48,33 @@ const AttendanceManager: React.FC = () => {
     fetchCourses();
     connectWebSocket();
     return () => {
-      wsRef.current?.close();
+      wsRef.current?.disconnect();
       if (timerRef.current) clearInterval(timerRef.current);
       if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
     };
   }, [user]);
 
   const connectWebSocket = () => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = window.location.port === '3000' 
-      ? `${protocol}//${window.location.hostname}:3001`
-      : `${protocol}//${window.location.host}`;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'ATTENDANCE_MARKED') {
-        setLiveRecords(prev => [{
-          studentId: data.studentId,
-          studentName: data.studentName,
-          department: data.department,
-          timestamp: new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-        }, ...prev]);
-      }
-    };
+      ? `http://${window.location.hostname}:3001`
+      : window.location.origin;
+    
+    import('socket.io-client').then(({ io }) => {
+      const socket = io(wsUrl);
+      wsRef.current = socket;
+      
+      socket.on('event', (data: any) => {
+        if (data.type === 'ATTENDANCE_MARKED') {
+          const payload = data.payload;
+          setLiveRecords(prev => [{
+            studentId: payload.studentId,
+            studentName: payload.studentName,
+            department: payload.department,
+            timestamp: new Date(payload.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+          }, ...prev]);
+        }
+      });
+    });
   };
 
   const fetchCourses = async () => {
