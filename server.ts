@@ -74,7 +74,9 @@ db.exec(`
     role TEXT,
     department TEXT,
     name TEXT,
-    email TEXT
+    email TEXT,
+    phone_number TEXT,
+    parent_phone TEXT
   );
 
   CREATE TABLE IF NOT EXISTS courses (
@@ -335,6 +337,8 @@ try { db.exec("ALTER TABLE attendance_sessions ADD COLUMN latitude REAL"); } cat
 try { db.exec("ALTER TABLE attendance_sessions ADD COLUMN longitude REAL"); } catch(e) {}
 try { db.exec("ALTER TABLE attendance ADD COLUMN latitude REAL"); } catch(e) {}
 try { db.exec("ALTER TABLE attendance ADD COLUMN longitude REAL"); } catch(e) {}
+try { db.exec("ALTER TABLE users ADD COLUMN phone_number TEXT"); } catch(e) {}
+try { db.exec("ALTER TABLE users ADD COLUMN parent_phone TEXT"); } catch(e) {}
 
 // Helper for Haversine distance
 function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -351,77 +355,160 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
 }
 
 function seedDatabase() {
-  // Seed Users
-  const seedUser = db.prepare('INSERT OR REPLACE INTO users (id, username, password, role, name, department) VALUES (?, ?, ?, ?, ?, ?)');
+  console.log('\x1b[35m[SEED]\x1b[0m \x1b[36mInitializing Sentinel Campus Data Layer...\x1b[0m');
   const hashedPassword = bcrypt.hashSync('password', 10);
-  
-  seedUser.run('admin-sys', 'admin', hashedPassword, 'ADMIN', 'System Administrator', 'IT');
-  seedUser.run('hod-cse', 'hod', hashedPassword, 'HOD', 'Dr. Arul Prasad', 'CSE');
-  seedUser.run('fac-cse', 'faculty', hashedPassword, 'FACULTY', 'Prof. Saravanan', 'CSE');
-  seedUser.run('s1', 'student', hashedPassword, 'STUDENT', 'Test Student', 'CSE');
-  for (let i = 2; i <= 10; i++) {
-    seedUser.run(`s${i}`, `student${i}`, hashedPassword, 'STUDENT', `Student ${i}`, i <= 5 ? 'CSE' : 'IT');
-  }
+  const seedUser = db.prepare('INSERT OR REPLACE INTO users (id, username, password, role, name, department, email, phone_number, parent_phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
 
-  // Seed Courses
+
+  // Admin, HOD, Faculty
+  seedUser.run('admin-sys', 'admin',   hashedPassword, 'ADMIN',   'Kavitha Rajan',        'IT',  'admin@sentinel.edu', '9876543210', '9876543211');
+  seedUser.run('hod-cse',  'hod',     hashedPassword, 'HOD',     'Dr. Arul Prasad',       'CSE', 'hod@sentinel.edu',   '9876543220', '9876543221');
+  seedUser.run('fac-cse',  'faculty', hashedPassword, 'FACULTY', 'Prof. Saravanan Kumar', 'CSE', 'saravanan@sentinel.edu', '9876543230', '9876543231');
+  seedUser.run('fac-it',   'faculty2',hashedPassword, 'FACULTY', 'Prof. Deepa Nair',      'IT',  'deepa@sentinel.edu', '9876543240', '9876543241');
+
+  // 20 Realistic Students
+  const students = [
+    ['s1',  'student',   'Arjun Ramesh',      'CSE', 'arjun@sentinel.edu',  '9150010001', '9150020001'],
+    ['s2',  'student2',  'Priya Krishnan',     'CSE', 'priya@sentinel.edu',  '9150010002', '9150020002'],
+    ['s3',  'student3',  'Karthik Pillai',     'CSE', 'karthik@sentinel.edu','9150010003', '9150020003'],
+    ['s4',  'student4',  'Meera Suresh',       'CSE', 'meera@sentinel.edu',  '9150010004', '9150020004'],
+    ['s5',  'student5',  'Rohan Menon',        'CSE', 'rohan@sentinel.edu',  '9150010005', '9150020005'],
+    ['s6',  'student6',  'Ananya Iyer',        'CSE', 'ananya@sentinel.edu', '9150010006', '9150020006'],
+    ['s7',  'student7',  'Vishnu Chandran',    'CSE', 'vishnu@sentinel.edu', '9150010007', '9150020007'],
+    ['s8',  'student8',  'Sneha Raghavan',     'CSE', 'sneha@sentinel.edu',  '9150010008', '9150020008'],
+    ['s9',  'student9',  'Aditya Nair',        'IT',  'aditya@sentinel.edu', '9150010009', '9150020009'],
+    ['s10', 'student10', 'Divya Mohan',        'IT',  'divya@sentinel.edu',  '9150010010', '9150020010'],
+    ['s11', 'student11', 'Sandeep Varma',      'IT',  'sandeep@sentinel.edu','9150010011', '9150020011'],
+    ['s12', 'student12', 'Pooja Balasubramaniam','IT', 'pooja@sentinel.edu',  '9150010012', '9150020012'],
+    ['s13', 'student13', 'Rahul Shankar',      'IT',  'rahul@sentinel.edu',  '9150010013', '9150020013'],
+    ['s14', 'student14', 'Kavya Menon',        'CSE', 'kavya@sentinel.edu',  '9150010014', '9150020014'],
+    ['s15', 'student15', 'Nikhil Thomas',      'CSE', 'nikhil@sentinel.edu', '9150010015', '9150020015'],
+    ['s16', 'student16', 'Lakshmi Priya',      'IT',  'lakshmi@sentinel.edu','9150010016', '9150020016'],
+    ['s17', 'student17', 'Harish Kumar',       'CSE', 'harish@sentinel.edu', '9150010017', '9150020017'],
+    ['s18', 'student18', 'Sreevidya Nair',     'IT',  'sreevidya@sentinel.edu','9150010018', '9150020018'],
+    ['s19', 'student19', 'Ajith Krishnan',     'CSE', 'ajith@sentinel.edu',  '9150010019', '9150020019'],
+    ['s20', 'student20', 'Nithya Suresh',      'IT',  'nithya@sentinel.edu', '9150010020', '9150020020'],
+  ];
+  students.forEach(([id, username, name, dept, email, phone, parentPhone]) => {
+    seedUser.run(id, username, hashedPassword, 'STUDENT', name, dept, email, phone, parentPhone);
+  });
+
+  // Courses
   if ((db.prepare('SELECT COUNT(*) as count FROM courses').get() as any).count === 0) {
     const insertCourse = db.prepare('INSERT INTO courses (id, name, dept, time, faculty_id) VALUES (?, ?, ?, ?, ?)');
-    insertCourse.run('CS301', 'Cloud Computing', 'CSE', '10:00 AM', 'fac-cse');
-    insertCourse.run('CS302', 'Database Systems', 'CSE', '11:30 AM', 'fac-cse');
-    insertCourse.run('IT201', 'Web Dev', 'IT', '02:00 PM', 'fac-cse');
-    insertCourse.run('ME401', 'Robotics', 'ME', '09:00 AM', 'fac-cse');
+    insertCourse.run('CS301', 'Cloud Computing',          'CSE', '10:00 AM', 'fac-cse');
+    insertCourse.run('CS302', 'Database Systems',         'CSE', '11:30 AM', 'fac-cse');
+    insertCourse.run('CS303', 'Machine Learning',         'CSE', '01:00 PM', 'fac-cse');
+    insertCourse.run('CS304', 'Computer Networks',        'CSE', '03:00 PM', 'fac-cse');
+    insertCourse.run('IT201', 'Full Stack Web Dev',       'IT',  '02:00 PM', 'fac-it');
+    insertCourse.run('IT202', 'Cyber Security',           'IT',  '09:00 AM', 'fac-it');
+    insertCourse.run('IT203', 'DevOps & CI/CD',           'IT',  '04:00 PM', 'fac-it');
   }
 
-  // Seed Badges
+  // Badges
   if ((db.prepare('SELECT COUNT(*) as count FROM badges').get() as any).count === 0) {
     const insertBadge = db.prepare('INSERT INTO badges (id, title, level, description, icon, earned) VALUES (?, ?, ?, ?, ?, ?)');
-    insertBadge.run('b1', 'Cloud Pioneer', 'Pro', 'Mastered AWS/Azure deployments', 'Cloud', 1);
-    insertBadge.run('b2', 'Code Architect', 'Expert', 'Excellence in system design', 'Code', 1);
-    insertBadge.run('b3', 'Bug Hunter', 'Elite', 'Identified 50+ critical vulnerabilities', 'Shield', 0);
-    insertBadge.run('b4', 'AI Virtuoso', 'Pro', 'Implemented self-learning neural nets', 'Brain', 0);
+    insertBadge.run('b1', 'Cloud Pioneer',     'Pro',    'Mastered AWS/Azure cloud deployments',          'Cloud',   1);
+    insertBadge.run('b2', 'Code Architect',    'Expert', 'Excellence in software system design',          'Code',    1);
+    insertBadge.run('b3', 'Bug Hunter',        'Elite',  'Identified 50+ critical vulnerabilities',       'Shield',  0);
+    insertBadge.run('b4', 'AI Virtuoso',       'Pro',    'Implemented machine learning pipelines',        'Brain',   0);
+    insertBadge.run('b5', 'Data Wizard',       'Pro',    'Advanced analytics and database skills',        'Chart',   1);
+    insertBadge.run('b6', 'Security Sentinel', 'Expert', 'Ethical hacking and penetration testing',      'Lock',    0);
+    insertBadge.run('b7', 'Open Source Hero',  'Rookie', 'Contributed to 3+ open source projects',       'Github',  1);
+    insertBadge.run('b8', 'Sprint Champion',   'Expert', '30-day study streak without breaks',            'Zap',     1);
   }
 
-  // Seed Schedule
+  // Schedule
   if ((db.prepare('SELECT COUNT(*) as count FROM schedule').get() as any).count === 0) {
     const insertEvent = db.prepare('INSERT INTO schedule (id, time, title, room, type, color, dept) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    insertEvent.run('e1', '09:00 AM', 'System Security Lab', 'Lab 402', 'Practical', '#ef4444', 'CSE');
-    insertEvent.run('e2', '11:30 AM', 'Advanced Algorithms', 'Hall A', 'Lecture', '#8b5cf6', 'CSE');
-    insertEvent.run('e3', '02:00 PM', 'IoT Workshop', 'Incubation Ctr', 'Seminar', '#f59e0b', 'IT');
+    insertEvent.run('e1', '09:00 AM', 'Cyber Security Lab',         'Lab 402', 'Practical', '#ef4444', 'IT');
+    insertEvent.run('e2', '10:00 AM', 'Cloud Computing Lecture',    'Hall A',  'Lecture',   '#3b82f6', 'CSE');
+    insertEvent.run('e3', '11:30 AM', 'Database Systems',           'Hall B',  'Lecture',   '#8b5cf6', 'CSE');
+    insertEvent.run('e4', '01:00 PM', 'Machine Learning Workshop',  'Lab 301', 'Practical', '#f59e0b', 'CSE');
+    insertEvent.run('e5', '02:00 PM', 'Full Stack Web Dev',         'Lab 205', 'Practical', '#10b981', 'IT');
+    insertEvent.run('e6', '03:00 PM', 'Computer Networks',          'Hall C',  'Lecture',   '#ec4899', 'CSE');
+    insertEvent.run('e7', '04:00 PM', 'DevOps Seminar',             'Seminar Hall', 'Seminar', '#00d2ff', 'IT');
   }
 
-  // Seed Tutors
+  // Tutors
   if ((db.prepare('SELECT COUNT(*) as count FROM tutors').get() as any).count === 0) {
     const insertTutor = db.prepare('INSERT INTO tutors (id, user_id, expert, rating, sessions, color) VALUES (?, ?, ?, ?, ?, ?)');
-    insertTutor.run('t1', 's1', 'Data Structures', 4.9, 42, '#8b5cf6');
-    insertTutor.run('t2', 's2', 'Operating Systems', 4.8, 38, '#ec4899');
+    insertTutor.run('t1', 's1',  'Data Structures & Algorithms', 4.9, 42, '#8b5cf6');
+    insertTutor.run('t2', 's2',  'Machine Learning / Python',    4.8, 38, '#ec4899');
+    insertTutor.run('t3', 's5',  'Web Dev / React',              4.7, 25, '#3b82f6');
+    insertTutor.run('t4', 's7',  'Cyber Security',               4.6, 19, '#ef4444');
+    insertTutor.run('t5', 's10', 'Cloud Architecture',           4.8, 31, '#10b981');
   }
 
-  // Seed Tutoring Requests
+  // Tutoring Requests
   if ((db.prepare('SELECT COUNT(*) as count FROM tutoring_requests').get() as any).count === 0) {
     const insertRequest = db.prepare('INSERT INTO tutoring_requests (id, student_id, topic, status, date) VALUES (?, ?, ?, ?, ?)');
-    insertRequest.run('tr1', 's3', 'React Global State', 'OPEN', 'Mar 18');
-    insertRequest.run('tr2', 's4', 'Discrete Math', 'OPEN', 'Mar 19');
+    insertRequest.run('tr1', 's3',  'React Global State Management', 'OPEN',   'Apr 07');
+    insertRequest.run('tr2', 's4',  'Discrete Mathematics',          'OPEN',   'Apr 07');
+    insertRequest.run('tr3', 's6',  'SQL Query Optimization',        'OPEN',   'Apr 06');
+    insertRequest.run('tr4', 's8',  'Neural Networks Basics',        'OPEN',   'Apr 06');
+    insertRequest.run('tr5', 's11', 'Docker & Containerization',     'MATCHED','Apr 05');
+    insertRequest.run('tr6', 's13', 'Sorting Algorithms',            'MATCHED','Apr 05');
   }
 
-  // Seed Lounges
+  // Study Lounges
   if ((db.prepare('SELECT COUNT(*) as count FROM lounges').get() as any).count === 0) {
     const insertLounge = db.prepare('INSERT INTO lounges (id, title, host_id, members, date, time, is_private) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    insertLounge.run('l1', 'Data Structures Sprint', 's1', 4, '2026-03-17', '22:00', 1);
-    insertLounge.run('l2', 'Calculus III Group', 's2', 2, '2026-03-18', '14:00', 0);
+    insertLounge.run('l1', 'DSA Final Exam Sprint',       's1',  6, '2026-04-07', '22:00', 0);
+    insertLounge.run('l2', 'Calculus Problem Solving',    's2',  3, '2026-04-08', '14:00', 0);
+    insertLounge.run('l3', 'OS Concepts Deep Dive',       's5',  4, '2026-04-08', '20:00', 0);
+    insertLounge.run('l4', 'React & Vite Lab Prep',       's3',  2, '2026-04-09', '10:00', 1);
+    insertLounge.run('l5', 'ML Model Tuning Group',       's7',  5, '2026-04-09', '18:00', 0);
   }
-}
 
-// Seed Chat Rooms
-if ((db.prepare('SELECT COUNT(*) as count FROM chat_rooms').get() as any).count === 0) {
-  const insertRoom = db.prepare('INSERT INTO chat_rooms (id, name, category) VALUES (?, ?, ?)');
-  insertRoom.run('global', 'Global Nexus', 'CAMPUS');
-  insertRoom.run('cse-general', 'CSE Faculty Forum', 'FACULTY');
-  insertRoom.run('it-general', 'IT Peer Group', 'STUDENT');
-  // Seed User Stats
+  // User Stats (XP + Streaks for leaderboard)
   if ((db.prepare('SELECT COUNT(*) as count FROM user_stats').get() as any).count === 0) {
-    const users = db.prepare('SELECT id FROM users').all() as any[];
-    const insertStats = db.prepare('INSERT INTO user_stats (user_id, xp, streak) VALUES (?, ?, ?)');
-    users.forEach(u => insertStats.run(u.id, 0, 0));
+    const insertStats = db.prepare('INSERT OR IGNORE INTO user_stats (user_id, xp, streak) VALUES (?, ?, ?)');
+    const xpData: Record<string, [number, number]> = {
+      's1': [4820, 21], 's2': [4310, 18], 's3': [3980, 15], 's4': [3750, 12],
+      's5': [3520, 19], 's6': [3100, 9],  's7': [2980, 7],  's8': [2760, 11],
+      's9': [2540, 14], 's10': [2310, 6], 's11': [2100, 8], 's12': [1980, 5],
+      's13': [1850, 3], 's14': [1620, 10],'s15': [1400, 4], 's16': [1200, 2],
+      's17': [1050, 1], 's18': [850, 3],  's19': [620, 2],  's20': [400, 1],
+      'fac-cse': [9200, 30], 'fac-it': [7600, 28], 'hod-cse': [11000, 45],
+    };
+    Object.entries(xpData).forEach(([uid, [xp, streak]]) => insertStats.run(uid, xp, streak));
+  }
+
+  // Assignments
+  if ((db.prepare('SELECT COUNT(*) as count FROM assignments').get() as any).count === 0) {
+    const insertAssignment = db.prepare('INSERT INTO assignments (id, title, description, instructor_id, due_date, max_marks) VALUES (?, ?, ?, ?, ?, ?)');
+    insertAssignment.run('a1', 'Cloud Architecture Design',    'Design a scalable 3-tier cloud architecture on AWS with auto-scaling, load balancing, and failover. Submit a report with diagrams.',                 'fac-cse', '2026-04-15', 50);
+    insertAssignment.run('a2', 'SQL Query Optimization Lab',   'Optimize 10 given slow SQL queries. Explain your indexing strategy and provide before/after execution plans.',                                        'fac-cse', '2026-04-12', 30);
+    insertAssignment.run('a3', 'ML Classification Report',     'Train a classification model on the provided dataset using scikit-learn. Achieve at least 85% accuracy. Document your preprocessing and evaluation.', 'fac-cse', '2026-04-20', 60);
+    insertAssignment.run('a4', 'React Portfolio Project',      'Build a personal portfolio using React + TypeScript. Must include dynamic routing, API integration, and responsive design.',                           'fac-it',  '2026-04-18', 40);
+    insertAssignment.run('a5', 'Network Security Audit Report','Perform a vulnerability assessment on the provided test server. Document all CVEs found, severity ratings, and suggested mitigations.',              'fac-it',  '2026-04-22', 50);
+  }
+
+  // Broadcasts
+  if ((db.prepare('SELECT COUNT(*) as count FROM broadcasts').get() as any).count === 0) {
+    const insertBroadcast = db.prepare('INSERT INTO broadcasts (id, title, message, author, role_target) VALUES (?, ?, ?, ?, ?)');
+    insertBroadcast.run('b1', 'Rescheduled Workshop', 'The Cloud Architecture workshop by Prof. Saravanan has been moved to Monday, 10:00 AM in Lab 402.', 'Admin', 'ALL');
+    insertBroadcast.run('b2', 'System Maintenance', 'Sentinel Campus nodes will undergo protocol synchronization tonight at 02:00 IST. Expect momentary latency.', 'System Admin', 'ALL');
+    insertBroadcast.run('b3', 'Internship Deadline', 'Final year students are reminded to update their skill badges by Friday for the upcoming recruitment drive.', 'Dr. Arul Prasad', 'STUDENT');
+    insertBroadcast.run('b4', 'New Resource Nexus', 'We have added 50+ new machine learning datasets to the Academic Vault. Access them via the Study Area.', 'IT Dept', 'ALL');
+  }
+
+  // Initial Chat Messages (Global)
+  if ((db.prepare('SELECT COUNT(*) as count FROM messages').get() as any).count === 0) {
+    const insertMsg = db.prepare('INSERT INTO messages (id, room_id, user_id, text, timestamp) VALUES (?, ?, ?, ?, ?)');
+    const now = new Date().toISOString();
+    insertMsg.run(uuidv4(), 'global', 'admin-sys', 'Welcome to the Sentinel Global Nexus. All nodes are healthy.', now);
+    insertMsg.run(uuidv4(), 'global', 's1',        'Has anyone started the Cloud Design assignment?', now);
+    insertMsg.run(uuidv4(), 'global', 's2',        'Yes, I just uploaded my preliminary architecture to the vault!', now);
+  }
+
+  // Chat Rooms (Moved inside seedDatabase for consistency)
+  if ((db.prepare('SELECT COUNT(*) as count FROM chat_rooms').get() as any).count === 0) {
+    const insertRoom = db.prepare('INSERT INTO chat_rooms (id, name, category) VALUES (?, ?, ?)');
+    insertRoom.run('global', 'Global Nexus', 'CAMPUS');
+    insertRoom.run('cse-general', 'CSE Faculty Forum', 'FACULTY');
+    insertRoom.run('it-general', 'IT Peer Group', 'STUDENT');
   }
 }
 
@@ -697,9 +784,24 @@ app.post('/api/synthesis/admin/upload', (req, res) => {
   }
 });
 
-// Admin User Management CRUD
-
 // Broadcasts APIs
+app.get('/api/leaderboard', (req, res) => {
+  try {
+    const leaderboard = db.prepare(`
+      SELECT u.id, u.name, s.xp, s.streak, u.role, u.department as dept
+      FROM users u
+      JOIN user_stats s ON u.id = s.user_id
+      WHERE u.role = 'STUDENT'
+      ORDER BY s.xp DESC
+      LIMIT 100
+    `).all();
+    res.json(leaderboard);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch leaderboard' });
+  }
+});
+
+// Admin User Management CRUD
 app.get('/api/broadcasts', (req, res) => {
   res.json(db.prepare('SELECT * FROM broadcasts ORDER BY timestamp DESC').all());
 });
@@ -1212,14 +1314,71 @@ app.post('/api/attendance/session/refresh', (req, res) => {
 // Stop a session
 app.post('/api/attendance/session/stop', (req, res) => {
   const { sessionId } = req.body;
+  
+  // 1. Mark session CLOSED
   db.prepare("UPDATE attendance_sessions SET status = 'CLOSED' WHERE id = ?").run(sessionId);
-  // Get all students who marked attendance in this session
+  
+  // 2. Identify and Notify Absentees
+  const session = db.prepare('SELECT * FROM attendance_sessions WHERE id = ?').get(sessionId) as any;
+  if (session) {
+    // Find all students in this department/section who did NOT scan
+    const absentees = db.prepare(`
+      SELECT id, name, parent_phone 
+      FROM users 
+      WHERE role = 'STUDENT' 
+      AND department = ? 
+      AND id NOT IN (SELECT user_id FROM attendance WHERE session_id = ?)
+    `).all(session.department, sessionId) as any[];
+
+    absentees.forEach(s => {
+      triggerAbsenceNotification(s.id, sessionId, 'AUTOMATIC_QR_TIMEOUT');
+    });
+  }
+
+  // 3. Broadcast final attendees
   const attendees = db.prepare(
     "SELECT a.user_id, u.name FROM attendance a JOIN users u ON a.user_id = u.id WHERE a.session_id = ?"
   ).all(sessionId) as any[];
-  // Broadcast session stopped with list of attendees so they can be shown a feedback modal
+  
   broadcastEvent('SESSION_STOPPED', { sessionId, attendees });
   res.json({ success: true, attendeeCount: attendees.length });
+});
+
+// Helper for AI Notification Simulation
+function triggerAbsenceNotification(studentId: string, sessionId: string, reason: string) {
+  const student = db.prepare('SELECT * FROM users WHERE id = ?').get(studentId) as any;
+  const session = db.prepare('SELECT * FROM attendance_sessions WHERE id = ?').get(sessionId) as any;
+  const course = session ? db.prepare('SELECT name FROM courses WHERE id = ?').get(session.course_id) as any : { name: 'Faculty Session' };
+
+  if (!student) return;
+
+  const timestamp = new Date().toISOString();
+  const magenta = "\x1b[35m", cyan = "\x1b[36m", yellow = "\x1b[33m", reset = "\x1b[0m";
+  
+  console.log(`${magenta}[TELECOM-SENTINEL]${reset} ${cyan}${timestamp}${reset} | Initiating AI Call to: ${yellow}${student.parent_phone}${reset} (Parent of ${student.name})`);
+  console.log(`${magenta}[TELECOM-SENTINEL]${reset} AI Voice Script: "Hello, this is Sentinel Campus AI. Your ward ${student.name} was absent for ${course.name}. Please ensure attendance compliance."`);
+  console.log(`${magenta}[TELECOM-SENTINEL]${reset} SMS Transmitted: "Alert: ${student.name} missed attendance in ${course.name}. - Sentinel Protocol"`);
+
+  // Broadcast to frontend for demo voice/toast
+  broadcastEvent('ABSENCE_NOTIFICATION', {
+    studentName: student.name,
+    courseName: course.name,
+    parentPhone: student.parent_phone,
+    reason
+  });
+}
+
+// Manual Marking - Absent
+app.post('/api/attendance/mark-absent', (req, res) => {
+  const { sessionId, studentId } = req.body;
+  const id = uuidv4();
+  try {
+     db.prepare("INSERT OR REPLACE INTO attendance (id, session_id, user_id, status) VALUES (?, ?, ?, 'ABSENT')").run(id, sessionId, studentId);
+     triggerAbsenceNotification(studentId, sessionId, 'MANUAL_FACULTY_MARK');
+     res.json({ success: true });
+  } catch (e) {
+     res.status(500).json({ error: 'Failed to record absence' });
+  }
 });
 
 // Manual Attendance Entry by Faculty
@@ -1321,10 +1480,23 @@ app.post('/api/attendance/mark', (req, res) => {
 
 // Get attendance records for a specific session
 app.get('/api/attendance/session/:sessionId/records', (req, res) => {
-  const records = db.prepare(
-    'SELECT a.*, u.name as student_name FROM attendance a JOIN users u ON a.user_id = u.id WHERE a.session_id = ? ORDER BY a.timestamp DESC'
-  ).all(req.params.sessionId);
+  const records = db.prepare(`
+    SELECT a.*, u.name as student_name, u.department 
+    FROM attendance a 
+    JOIN users u ON a.user_id = u.id 
+    WHERE a.session_id = ?
+  `).all(req.params.sessionId);
   res.json(records);
+});
+
+// Get ALL students enrolled in a course (Roster)
+app.get('/api/courses/:courseId/students', (req, res) => {
+  const course = db.prepare('SELECT dept FROM courses WHERE id = ?').get(req.params.courseId) as any;
+  if (!course) return res.status(404).json({ error: 'Course not found' });
+  
+  // For this demo, we assume students are enrolled by department
+  const students = db.prepare('SELECT id, name, department, role FROM users WHERE role = "STUDENT" AND department = ?').all(course.dept);
+  res.json(students);
 });
 
 // Projects API

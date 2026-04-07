@@ -27,13 +27,9 @@ const Tutoring: React.FC = () => {
   const fetchTutors = async () => {
     try {
       const res = await fetch('/api/tutoring/tutors');
-      if (res.ok) setTutors(await res.json());
-      else {
-        setTutors([
-          { id: 't1', name: 'Dr. Sarah Chen', expert: 'Distributed Systems', rating: 4.9, sessions: 142, color: '#3b82f6', tags: ['Docker', 'K8s', 'AWS'] },
-          { id: 't2', name: 'James Wilson', expert: 'React Native Expert', rating: 4.8, sessions: 89, color: '#a855f7', tags: ['iOS', 'UI/UX', 'Hooks'] },
-          { id: 't3', name: 'Elena Vance', expert: 'UI/UX Pro', rating: 4.7, sessions: 56, color: '#00d2ff', tags: ['Figma', 'Prototyping', 'Design'] },
-        ]);
+      if (res.ok) {
+        const data = await res.json();
+        setTutors(Array.isArray(data) ? data : []);
       }
     } catch (e) {
       console.error('Failed to fetch tutors:', e);
@@ -43,7 +39,10 @@ const Tutoring: React.FC = () => {
   const fetchRequests = async () => {
     try {
       const res = await fetch('/api/tutoring/requests');
-      if (res.ok) setRequests(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setRequests(Array.isArray(data) ? data : []);
+      }
     } catch (e) {
       console.error('Failed to fetch tutoring requests:', e);
     }

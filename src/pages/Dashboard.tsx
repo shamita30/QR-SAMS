@@ -283,26 +283,23 @@ const MainDashboard: React.FC = () => {
               <Calendar size={18} className="text-white/20" />
             </div>
             <div className="space-y-4">
-               {[
-                 { title: 'Advanced Algorithms', time: '10:30 AM', room: 'Hall 402', color: '#3b82f6' },
-                 { title: 'Machine Learning Lab', time: '01:00 PM', room: 'Lab B', color: '#a855f7' }
-               ].map((session, i) => (
+               {courses.slice(0, 3).map((session, i) => (
                  <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-all group">
-                   <div className="w-12 h-12 rounded-xl flex flex-col items-center justify-center bg-white/5 border border-white/10 group-hover:border-primary/40 transition-all font-outfit">
-                      <span className="text-[10px] text-white/40 block leading-none mb-1">IST</span>
-                      <span className="text-xs font-bold text-white leading-none">NOW</span>
+                   <div className="w-12 h-12 rounded-xl flex flex-col items-center justify-center bg-white/5 border border-white/10 group-hover:border-primary/40 transition-all font-outfit text-primary font-bold">
+                      {session.id.substring(0,2)}
                    </div>
                    <div className="flex-1">
-                      <h4 className="text-sm font-bold text-white mb-0.5">{session.title}</h4>
+                      <h4 className="text-sm font-bold text-white mb-0.5">{session.name}</h4>
                       <div className="flex items-center gap-3">
                          <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">{session.time}</span>
                          <span className="w-1 h-1 rounded-full bg-white/10" />
-                         <span className="text-[10px] text-primary font-bold uppercase tracking-widest">{session.room}</span>
+                         <span className="text-[10px] text-primary font-bold uppercase tracking-widest">{session.dept}</span>
                       </div>
                    </div>
                    <NeonButton className="py-2 px-4 text-[10px]">Enter</NeonButton>
                  </div>
                ))}
+               {courses.length === 0 && <p className="text-center text-white/20 py-8 italic text-xs">No upcoming sessions detected.</p>}
             </div>
           </GlassCard>
 
@@ -314,25 +311,23 @@ const MainDashboard: React.FC = () => {
               <Globe size={18} className="text-white/20" />
             </div>
             <div className="space-y-4">
-               {[
-                 { user: 'Dr. Arul Prasad', msg: 'The Cloud Computing workshop has been rescheduled to Monday.', time: '12m ago' },
-                 { user: 'Student Council', msg: 'New materials for DS Sprint are now available in the Study Area.', time: '1h ago' }
-               ].map((note, i) => (
+               {broadcasts.slice(0, 2).map((note, i) => (
                  <div key={i} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-all">
                     <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary font-bold text-xs uppercase">
-                       {note.user.charAt(0)}
+                       {note.author.charAt(0)}
                     </div>
                     <div className="flex-1">
                        <div className="flex items-center justify-between mb-1">
-                          <h4 className="text-[10px] font-bold text-white/30 tracking-widest uppercase">{note.user}</h4>
-                          <span className="text-[10px] text-white/20 font-mono tracking-tighter">{note.time}</span>
+                          <h4 className="text-[10px] font-bold text-white/30 tracking-widest uppercase">{note.author}</h4>
+                          <span className="text-[10px] text-white/20 font-mono tracking-tighter">Real-time</span>
                        </div>
                        <p className="text-sm text-white/70 leading-relaxed font-medium">
-                          {note.msg}
+                          {note.message}
                        </p>
                     </div>
                  </div>
                ))}
+               {broadcasts.length === 0 && <p className="text-center text-white/20 py-8 italic text-xs">No recent briefings discovered.</p>}
             </div>
           </GlassCard>
         </div>

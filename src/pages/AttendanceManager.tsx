@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Users, Calendar, Search, 
-  QrCode, Square, Play, CheckCircle, Wifi, UserCheck, AlertCircle, BarChart, Copy, RefreshCw, Keyboard, X
+  QrCode, Square, Play, CheckCircle, Wifi, UserCheck, AlertCircle, BarChart, Copy, RefreshCw, Keyboard, X,
+  PhoneCall, MessageSquare, Volume2
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -25,6 +26,8 @@ const AttendanceManager: React.FC = () => {
   const [analytics, setAnalytics] = useState<any>(null);
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualStudentId, setManualStudentId] = useState('');
+  const [roster, setRoster] = useState<any[]>([]);
+  const [showRoster, setShowRoster] = useState(false);
 
   const wsRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -68,12 +71,28 @@ const AttendanceManager: React.FC = () => {
       socket.on('event', (data: any) => {
         if (data.type === 'ATTENDANCE_MARKED') {
           const payload = data.payload;
-          setLiveRecords(prev => [{
-            studentId: payload.studentId,
-            studentName: payload.studentName,
-            department: payload.department,
-            timestamp: new Date(payload.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-          }, ...prev]);
+          setLiveRecords(prev => {
+            if (prev.find(r => r.studentId === payload.studentId)) return prev;
+            return [{
+              studentId: payload.studentId,
+              studentName: payload.studentName,
+              department: payload.department,
+              timestamp: new Date(payload.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            }, ...prev];
+          });
+        }
+
+        if (data.type === 'ABSENCE_NOTIFICATION') {
+          const { studentName, courseName, parentPhone } = data.payload;
+          
+          // AI Voice Protocol
+          const msg = new SpeechSynthesisUtterance();
+          msg.text = `Attention faculty. Initiating automated protocol for ${studentName}. Absence detected in ${courseName}. Calling parent at mobile node ending in ${parentPhone.slice(-4)}.`;
+          msg.rate = 0.9;
+          msg.pitch = 1.1;
+          window.speechSynthesis.speak(msg);
+
+          addToast(`AI Call initiated for ${studentName}`, 'INFO');
         }
       });
     });
@@ -111,6 +130,15 @@ const AttendanceManager: React.FC = () => {
     });
   };
 
+  const fetchRoster = async (courseId: string) => {
+    try {
+      const res = await fetch(`/api/courses/${courseId}/students`);
+      if (res.ok) setRoster(await res.json());
+    } catch (e) {
+      console.error('Failed to fetch roster:', e);
+    }
+  };
+
   const startSession = async (courseId: string) => {
     try {
       const { latitude, longitude } = await getGeoLocation();
@@ -127,8 +155,8 @@ const AttendanceManager: React.FC = () => {
         setLiveRecords([]);
         setCountdown(30);
         startRefreshTimer(data.sessionId);
-        // Fetch any existing records for this session
         fetchSessionRecords(data.sessionId);
+        fetchRoster(courseId);
         addToast(`QR Session Started for ${courseId}`, 'SUCCESS');
       } else {
         addToast('Failed to start session', 'ERROR');
@@ -318,47 +346,103 @@ const AttendanceManager: React.FC = () => {
                 <h2 className="text-lg font-bold flex items-center gap-2">
                   <Wifi size={18} className="text-accent animate-pulse" /> Live Attendance Feed
                 </h2>
-                <div className="flex items-center gap-2 px-3 py-1 bg-accent/10 rounded-full border border-accent/20">
-                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                  <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
-                    {liveRecords.length} Present
-                  </span>
+                <div className="flex items-center gap-2">
+                   {activeSessionId && (
+                     <div className="flex items-center gap-2 mr-4 px-3 py-1 bg-primary/5 border border-primary/10 rounded-lg">
+                        <Volume2 size={14} className="text-primary animate-pulse" />
+                        <span className="text-[10px] font-bold text-primary/60 uppercase">AI Voice Active</span>
+                        <MessageSquare size={14} className="text-primary/40 ml-1" />
+                     </div>
+                   )}
+                   <button 
+                     onClick={() => setShowRoster(!showRoster)}
+                     className={`px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest transition-all ${showRoster ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-white/40'}`}
+                   >
+                     {showRoster ? 'Back to Feed' : 'View Full Roster'}
+                   </button>
+                   <div className="flex items-center gap-2 px-3 py-1 bg-accent/10 rounded-full border border-accent/20">
+                     <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                     <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                       {liveRecords.length} Present
+                     </span>
+                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
-                <AnimatePresence initial={false}>
-                  {liveRecords.length === 0 ? (
-                    <div className="text-center py-12 text-white/20">
-                      <UserCheck size={48} className="mx-auto mb-4 opacity-30" />
-                      <p className="text-sm">Waiting for students to scan QR code...</p>
-                    </div>
-                  ) : (
-                    liveRecords.map((record, idx) => (
-                      <motion.div
-                        key={`${record.studentId}-${idx}`}
-                        initial={{ opacity: 0, x: -20, scale: 0.95 }}
-                        animate={{ opacity: 1, x: 0, scale: 1 }}
-                        className="flex items-center justify-between p-4 glass rounded-2xl border border-white/5 hover:border-accent/20 transition-all"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent font-bold text-sm">
-                            {record.studentName.charAt(0)}
+              {showRoster ? (
+                <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                   {roster.map(student => {
+                     const isPresent = liveRecords.find(r => r.studentId === student.id);
+                     return (
+                       <div key={student.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isPresent ? 'bg-green-500/5 border-green-500/20' : 'bg-white/5 border-white/5'}`}>
+                         <div className="flex items-center gap-3">
+                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${isPresent ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/40'}`}>
+                             {student.name.charAt(0)}
+                           </div>
+                           <div>
+                             <p className={`font-bold text-sm ${isPresent ? 'text-white' : 'text-white/40'}`}>{student.name}</p>
+                             <p className="text-[10px] text-white/20 uppercase tracking-widest">{student.id}</p>
+                           </div>
+                         </div>
+                         
+                         {isPresent ? (
+                            <div className="flex items-center gap-2 text-green-400 text-[10px] font-bold uppercase">
+                               <CheckCircle size={14} /> Verified
+                            </div>
+                         ) : (
+                            <button 
+                              onClick={async () => {
+                                const res = await fetch('/api/attendance/mark-absent', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ sessionId: activeSessionId, studentId: student.id })
+                                });
+                                if (res.ok) addToast(`AI Call Triggered for ${student.name}`, 'INFO');
+                              }}
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all text-[9px] font-bold uppercase tracking-wider"
+                            >
+                               <PhoneCall size={12} /> Mark Absent & Call AI
+                            </button>
+                         )}
+                       </div>
+                     );
+                   })}
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+                  <AnimatePresence initial={false}>
+                    {liveRecords.length === 0 ? (
+                      <div className="text-center py-12 text-white/20">
+                        <UserCheck size={48} className="mx-auto mb-4 opacity-30" />
+                        <p className="text-sm">Waiting for students to scan QR code...</p>
+                      </div>
+                    ) : (
+                      liveRecords.map((record, idx) => (
+                        <motion.div
+                          key={`${record.studentId}-${idx}`}
+                          initial={{ opacity: 0, x: -20, scale: 0.95 }}
+                          animate={{ opacity: 1, x: 0, scale: 1 }}
+                          className="flex items-center justify-between p-4 glass rounded-2xl border border-white/5 hover:border-accent/20 transition-all"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent font-bold text-sm">
+                              {record.studentName.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm">{record.studentName}</p>
+                              <p className="text-[10px] text-white/40 uppercase tracking-widest">{record.department}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-bold text-sm">{record.studentName}</p>
-                            <p className="text-[10px] text-white/40 uppercase tracking-widest">{record.department}</p>
+                          <div className="flex items-center gap-2">
+                            <CheckCircle size={14} className="text-accent" />
+                            <span className="text-[10px] font-mono text-white/40">{record.timestamp}</span>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle size={14} className="text-accent" />
-                          <span className="text-[10px] font-mono text-white/40">{record.timestamp}</span>
-                        </div>
-                      </motion.div>
-                    ))
-                  )}
-                </AnimatePresence>
-              </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
           )}
 

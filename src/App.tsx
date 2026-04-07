@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Layout from './components/layout/Layout';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Leaderboard from './pages/Leaderboard';
 import StudyArea from './pages/StudyArea';
@@ -48,10 +49,13 @@ const App: React.FC = () => {
   return (
     <Router>
       <Routes>
-        {/* Auth Route */}
         <Route 
           path="/login" 
           element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} 
+        />
+        <Route 
+          path="/register" 
+          element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" />} 
         />
 
         {/* Core Dashboard */}

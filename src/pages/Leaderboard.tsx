@@ -7,20 +7,36 @@ import {
 import { motion } from 'framer-motion';
 import GlassCard from '../components/ui/GlassCard';
 
-const players = [
-  { id: 1, name: 'Alex Johnson', xp: 12450, trend: 'up', role: 'Level 40 Architect', avatar: 'A' },
-  { id: 2, name: 'Sarah Chen', xp: 11200, trend: 'up', role: 'Level 38 Explorer', avatar: 'S' },
-  { id: 3, name: 'Michael Sun', xp: 10850, trend: 'down', role: 'Level 35 Veteran', avatar: 'M' },
-  { id: 4, name: 'Elena Rodriguez', xp: 9400, trend: 'up', role: 'Level 30 Scout', avatar: 'E' },
-  { id: 5, name: 'David Kim', xp: 8900, trend: 'neutral', role: 'Level 28 Novice', avatar: 'D' },
-  { id: 6, name: 'Priya Patel', xp: 8200, trend: 'up', role: 'Level 25 Novice', avatar: 'P' },
-];
-
 const Leaderboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'GLOBAL' | 'DEPARTMENT' | 'FRIENDS'>('GLOBAL');
+  const [players, setPlayers] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const res = await fetch('/api/leaderboard');
+        if (res.ok) {
+          const data = await res.json();
+          setPlayers(data.map((p: any) => ({
+            ...p,
+            trend: 'up', // Default trend for demo
+            avatar: p.name.charAt(0),
+            role: `Level ${Math.floor(p.xp / 400)} ${p.dept} Node`
+          })));
+        }
+      } catch (e) {
+        console.error('Failed to sync leaderboards:', e);
+      }
+    };
+    fetchLeaderboard();
+  }, []);
 
   const topThree = players.slice(0, 3);
   const remainingPlayers = players.slice(3);
+
+  if (players.length === 0) {
+    return <div className="p-20 text-center text-white/20 italic animate-pulse uppercase tracking-[0.5em]">Syncing Rankings...</div>;
+  }
 
   return (
     <div className="space-y-8 pb-12">

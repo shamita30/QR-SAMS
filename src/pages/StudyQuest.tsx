@@ -25,20 +25,27 @@ const StudyQuest: React.FC = () => {
     try {
       const sRes = await fetch(`/api/user/stats/${user.id}`);
       const pRes = await fetch(`/api/study-quest/progress/${user.id}`);
-      if (sRes.ok) setUserStats(await sRes.ok ? await sRes.json() : { xp: 0, streak: 0 });
+      
+      if (sRes.ok) {
+        const stats = await sRes.json();
+        setUserStats(stats || { xp: 0, streak: 0 });
+      }
+      
       if (pRes.ok) {
         const progress = await pRes.json();
         const statusMap: Record<number, string> = { 1: 'ACTIVE' }; // Default first node
-        progress.forEach((p: any) => {
-          statusMap[p.node_id] = p.status;
-          if (p.status === 'COMPLETED' && !statusMap[p.node_id + 1]) {
-            statusMap[p.node_id + 1] = 'ACTIVE';
-          }
-        });
+        if (Array.isArray(progress)) {
+          progress.forEach((p: any) => {
+            statusMap[p.node_id] = p.status;
+            if (p.status === 'COMPLETED' && !statusMap[p.node_id + 1]) {
+              statusMap[p.node_id + 1] = 'ACTIVE';
+            }
+          });
+        }
         setNodeStatus(statusMap);
       }
     } catch (e) {
-      console.error(e);
+      console.error('Data sync interruption:', e);
     }
   };
 

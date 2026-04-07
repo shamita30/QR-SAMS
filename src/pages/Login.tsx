@@ -1,72 +1,58 @@
 import React, { useState } from 'react';
-import { Shield, ArrowRight, User, GraduationCap, Lock, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Shield, ArrowRight, Mail, Lock, GraduationCap, User, ShieldCheck, Fingerprint } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import GlassCard from '../components/ui/GlassCard';
 import NeonButton from '../components/ui/NeonButton';
 import { useAuthStore, UserRole } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
-import { useNavigate } from 'react-router-dom';
+import { handleLogin as firebaseLogin } from '../lib/firebase';
 
 const Login: React.FC = () => {
   const [role, setRole] = useState<UserRole>('STUDENT');
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  
   const login = useAuthStore((state) => state.login);
   const { addToast } = useToastStore();
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        addToast(`Welcome back, ${data.user.name}`, 'SUCCESS');
-        login(data.user, data.token);
-        navigate('/dashboard');
-      } else {
-        addToast(data.error || 'Identity verification failed.', 'ERROR');
-      }
-    } catch (e) {
-      addToast('Network node unreachable.', 'ERROR');
-    }
-  };
+    setLoading(true);
 
-  const handleQuickLogin = async (selectedRole: UserRole) => {
-    setRole(selectedRole);
-    // Map roles to their actual seeded usernames in the database
-    const usernameMap: Record<UserRole, string> = {
-      STUDENT: 'student',
-      FACULTY: 'faculty',
-      ADMIN: 'admin',
-      HOD: 'hod'
-    };
-    const u = usernameMap[selectedRole] || selectedRole.toLowerCase();
-    const pwd = 'password';
-    setUsername(u);
-    setPassword(pwd);
-    
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: pwd })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        addToast(`Welcome back, ${data.user.name}`, 'SUCCESS');
-        login(data.user, data.token);
+      const result = await firebaseLogin(email, password);
+      
+      if (result.success && result.profile) {
+        login({
+          id: result.user.uid,
+          username: email.split('@')[0],
+          name: result.profile.name,
+          role: result.profile.role,
+          department: result.profile.department,
+          avatar: result.profile.imageUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${result.profile.name}`
+        }, 'firebase-token');
+        
+        addToast('Identity verified. Welcome back.', 'SUCCESS');
         navigate('/dashboard');
-      } else {
-        addToast(data.error || 'Identity verification failed.', 'ERROR');
+      } else if (result.success) {
+        // Fallback for users without RTDB profiles
+        login({
+          id: result.user.uid,
+          username: email.split('@')[0],
+          name: email.split('@')[0],
+          role: 'STUDENT',
+          avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${result.user.uid}`
+        }, 'firebase-token');
+        addToast('Identity verified. Redirecting to Dashboard.', 'INFO');
+        navigate('/dashboard');
       }
-    } catch (e) {
-      addToast('Network node unreachable.', 'ERROR');
+    } catch (error: any) {
+      addToast(error.message || 'Authentication sequence failed.', 'ERROR');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -86,7 +72,6 @@ const Login: React.FC = () => {
         className="w-full max-w-md"
       >
         <GlassCard hover={false} className="relative overflow-hidden">
-          {/* Background Glow */}
           <div className="absolute -top-24 -left-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl animate-pulse" />
           <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-secondary/20 rounded-full blur-3xl animate-pulse" />
 
@@ -106,77 +91,73 @@ const Login: React.FC = () => {
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6 relative z-10">
-            {/* Role Selector */}
+          <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
             <div className="flex p-1 bg-white/5 rounded-xl border border-white/10 mb-8">
               {roles.map((r) => (
                 <button
                   key={r.id}
                   type="button"
                   onClick={() => setRole(r.id)}
-                  className={`flex-1 flex flex-col items-center py-2 px-1 rounded-lg transition-all duration-300 ${
-                    role === r.id
-                      ? 'bg-primary text-white shadow-lg'
-                      : 'text-white/40 hover:text-white'
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${
+                    role === r.id ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-white/40 hover:text-white/60'
                   }`}
                 >
-                  <r.icon className="w-5 h-5 mb-1" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">{r.label}</span>
+                  <r.icon size={14} />
+                  {r.label}
                 </button>
               ))}
             </div>
 
             <div className="space-y-4">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="input-field pl-11"
-                  required
-                />
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+              <div className="relative group">
+                <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] ml-2">Institutional Email</label>
+                <div className="relative mt-1">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-primary transition-colors" size={18} />
+                  <input
+                    required
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-primary/50 transition-all font-medium"
+                    placeholder="Enter email access node..."
+                  />
+                </div>
               </div>
-              <div className="relative">
-                <input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="input-field pl-11"
-                  required
-                />
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+
+              <div className="relative group">
+                <label className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] ml-2">Security Cipher</label>
+                <div className="relative mt-1">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 group-focus-within:text-primary transition-colors" size={18} />
+                  <input
+                    required
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-primary/50 transition-all font-medium"
+                    placeholder="Enter decryption key..."
+                  />
+                </div>
               </div>
             </div>
 
-            <NeonButton type="submit" className="w-full py-4 uppercase tracking-[0.2em] text-sm">
-              Enter Sentinel <ArrowRight className="w-4 h-4 ml-1" />
+            <NeonButton type="submit" className={`w-full py-4 uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-2 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+              {loading ? 'Decrypting...' : (
+                <>
+                  Verify Identity
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </>
+              )}
             </NeonButton>
-          </form>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-            className="mt-8 text-center"
-          >
-            <p className="text-white/30 text-[10px] uppercase tracking-widest mb-3">
-              Quick Login Support
-            </p>
-            <div className="flex justify-center flex-wrap gap-2">
-              {roles.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => handleQuickLogin(r.id)}
-                  className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[9px] text-white/40 hover:text-primary hover:border-primary/40 transition-all font-bold"
-                >
-                  {r.label}
-                </button>
-              ))}
+            <div className="pt-6 border-t border-white/5 text-center">
+              <p className="text-white/30 text-[10px] uppercase tracking-widest mb-4 flex items-center justify-center gap-2">
+                <Fingerprint size={12} /> External Identity Protocol
+              </p>
+              <p className="text-white/40 text-sm">
+                Unregistered Identity? <Link to="/register" className="text-primary font-bold hover:underline">Initiate Registration</Link>
+              </p>
             </div>
-          </motion.div>
+          </form>
         </GlassCard>
       </motion.div>
     </div>
