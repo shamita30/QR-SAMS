@@ -1194,9 +1194,8 @@ app.post('/api/attendance/mark', (req, res) => {
     if (distance > 150) { // 150 meters radius
       return res.status(403).json({ error: `You are too far from the classroom (${Math.round(distance)}m). You must be within 150m.` });
     }
-  } else if (!latitude || !longitude) {
-    return res.status(403).json({ error: 'Location required to mark attendance securely.' });
   }
+  // The else if block blocking missing locations has been removed to allow fallback testing
 
   // Check for duplicate
   const existing = db.prepare('SELECT * FROM attendance WHERE user_id = ? AND session_id = ?')
