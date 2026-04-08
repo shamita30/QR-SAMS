@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  Users, Calendar, Search, 
+import {
+  Users, Calendar, Search,
   QrCode, Square, Play, CheckCircle, Wifi, UserCheck, AlertCircle, BarChart, Copy, RefreshCw, Keyboard, X,
   MessageSquare, Volume2
 } from 'lucide-react';
@@ -12,6 +12,10 @@ import { useToastStore } from '../store/useToastStore';
 const AttendanceManager: React.FC = () => {
   const { user } = useAuthStore();
   const { addToast } = useToastStore();
+
+  // CONFIGURATION: Set QR Session Duration (in seconds)
+  const QR_REFRESH_INTERVAL = 5;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [courses, setCourses] = useState<any[]>([]);
 
@@ -20,7 +24,7 @@ const AttendanceManager: React.FC = () => {
   const [activeSessionCourseId, setActiveSessionCourseId] = useState<string | null>(null);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [liveRecords, setLiveRecords] = useState<any[]>([]);
-  const [countdown, setCountdown] = useState(30);
+  const [countdown, setCountdown] = useState(QR_REFRESH_INTERVAL);
   const [analytics, setAnalytics] = useState<any>(null);
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualStudentId, setManualStudentId] = useState('');
@@ -59,14 +63,14 @@ const AttendanceManager: React.FC = () => {
   }, [user]);
 
   const connectWebSocket = () => {
-    const wsUrl = window.location.port === '3000' 
+    const wsUrl = window.location.port === '3000'
       ? `http://${window.location.hostname}:3001`
       : window.location.origin;
-    
+
     import('socket.io-client').then(({ io }) => {
       const socket = io(wsUrl);
       wsRef.current = socket;
-      
+
       socket.on('event', (data: any) => {
         if (data.type === 'ATTENDANCE_MARKED') {
           const payload = data.payload;
@@ -83,7 +87,7 @@ const AttendanceManager: React.FC = () => {
 
         if (data.type === 'ABSENCE_NOTIFICATION') {
           const { studentName, courseName, parentPhone } = data.payload;
-          
+
           // AI Voice Protocol
           const msg = new SpeechSynthesisUtterance();
           msg.text = `Attention faculty. Initiating automated protocol for ${studentName}. Absence detected in ${courseName}. Calling parent at mobile node ending in ${parentPhone.slice(-4)}.`;
@@ -112,7 +116,7 @@ const AttendanceManager: React.FC = () => {
     }
   };
 
-  const getGeoLocation = (): Promise<{latitude: number | null, longitude: number | null}> => {
+  const getGeoLocation = (): Promise<{ latitude: number | null, longitude: number | null }> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
         resolve({ latitude: null, longitude: null });
@@ -152,7 +156,7 @@ const AttendanceManager: React.FC = () => {
         setActiveSessionCourseId(courseId);
         setSessionToken(data.token);
         setLiveRecords([]);
-        setCountdown(30);
+        setCountdown(QR_REFRESH_INTERVAL);
         startRefreshTimer(data.sessionId);
         fetchSessionRecords(data.sessionId);
         fetchRoster(courseId);
@@ -215,7 +219,7 @@ const AttendanceManager: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         setSessionToken(data.token);
-        setCountdown(30);
+        setCountdown(QR_REFRESH_INTERVAL);
         addToast('Dynamic token refreshed', 'INFO');
       } else {
         addToast('Failed to refresh token', 'ERROR');
@@ -232,15 +236,15 @@ const AttendanceManager: React.FC = () => {
     // Countdown timer
     timerRef.current = setInterval(() => {
       setCountdown(prev => {
-        if (prev <= 1) return 30;
+        if (prev <= 1) return QR_REFRESH_INTERVAL;
         return prev - 1;
       });
     }, 1000);
 
-    // Token refresh every 30 seconds
+    // Token refresh every X seconds
     refreshTimerRef.current = setInterval(() => {
       refreshToken();
-    }, 30000);
+    }, QR_REFRESH_INTERVAL * 1000);
   };
 
   const fetchSessionRecords = async (sessionId: string) => {
@@ -263,14 +267,14 @@ const AttendanceManager: React.FC = () => {
   const getDistance = (lat1: number | null, lon1: number | null, lat2: number | null, lon2: number | null) => {
     if (!lat1 || !lon1 || !lat2 || !lon2) return null;
     const R = 6371e3;
-    const φ1 = lat1 * Math.PI/180;
-    const φ2 = lat2 * Math.PI/180;
-    const Δφ = (lat2-lat1) * Math.PI/180;
-    const Δλ = (lon2-lon1) * Math.PI/180;
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) *
+      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // in meters
   };
 
@@ -281,8 +285,8 @@ const AttendanceManager: React.FC = () => {
     addToast('Attendance link copied to clipboard', 'SUCCESS');
   };
 
-  const filteredCourses = courses.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredCourses = courses.filter(c =>
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     c.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -298,7 +302,7 @@ const AttendanceManager: React.FC = () => {
           <p className="text-white/50">{isHOD ? `${dept} Department Overview` : 'Manage your class rosters'}</p>
         </div>
         <div className="flex gap-3">
-          <button 
+          <button
             onClick={() => addToast('History logs loaded', 'INFO')}
             className="btn-secondary"
           >
@@ -323,8 +327,8 @@ const AttendanceManager: React.FC = () => {
               <h2 className="text-lg font-bold">Active Courses</h2>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" size={16} />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Filter courses..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -345,7 +349,7 @@ const AttendanceManager: React.FC = () => {
                       <p className="text-xs text-white/40 uppercase tracking-wider">{course.id} • {course.time} • {course.dept}</p>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => {
                       if (activeSessionCourseId === course.id) {
                         stopSession();
@@ -353,11 +357,10 @@ const AttendanceManager: React.FC = () => {
                         startSession(course.id);
                       }
                     }}
-                    className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${
-                      activeSessionCourseId === course.id 
-                        ? 'bg-red-500/20 text-red-400 border border-red-500/20' 
-                        : 'bg-primary/20 text-primary border border-primary/20 hover:bg-primary/30'
-                    }`}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${activeSessionCourseId === course.id
+                      ? 'bg-red-500/20 text-red-400 border border-red-500/20'
+                      : 'bg-primary/20 text-primary border border-primary/20 hover:bg-primary/30'
+                      }`}
                   >
                     {activeSessionCourseId === course.id ? <><Square size={14} /> Stop session</> : <><Play size={14} /> Start QR</>}
                   </button>
@@ -377,103 +380,101 @@ const AttendanceManager: React.FC = () => {
                   <Wifi size={18} className="text-accent animate-pulse" /> Live Attendance Feed
                 </h2>
                 <div className="flex items-center gap-2">
-                   {activeSessionId && (
-                     <div className="flex items-center gap-2 mr-4 px-3 py-1 bg-primary/5 border border-primary/10 rounded-lg">
-                        <Volume2 size={14} className="text-primary animate-pulse" />
-                        <span className="text-[10px] font-bold text-primary/60 uppercase">AI Voice Active</span>
-                        <MessageSquare size={14} className="text-primary/40 ml-1" />
-                     </div>
-                   )}
-                   <button 
-                     onClick={() => setShowRoster(!showRoster)}
-                     className={`px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest transition-all ${showRoster ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-white/40'}`}
-                   >
-                     {showRoster ? 'Back to Feed' : 'View Full Roster'}
-                   </button>
-                   <div className="flex items-center gap-2 px-3 py-1 bg-accent/10 rounded-full border border-accent/20">
-                     <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                     <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
-                       {liveRecords.length} Present
-                     </span>
-                   </div>
+                  {activeSessionId && (
+                    <div className="flex items-center gap-2 mr-4 px-3 py-1 bg-primary/5 border border-primary/10 rounded-lg">
+                      <Volume2 size={14} className="text-primary animate-pulse" />
+                      <span className="text-[10px] font-bold text-primary/60 uppercase">AI Voice Active</span>
+                      <MessageSquare size={14} className="text-primary/40 ml-1" />
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setShowRoster(!showRoster)}
+                    className={`px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest transition-all ${showRoster ? 'bg-primary/20 border-primary text-primary' : 'bg-white/5 border-white/10 text-white/40'}`}
+                  >
+                    {showRoster ? 'Back to Feed' : 'View Full Roster'}
+                  </button>
+                  <div className="flex items-center gap-2 px-3 py-1 bg-accent/10 rounded-full border border-accent/20">
+                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                    <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                      {liveRecords.length} Present
+                    </span>
+                  </div>
                 </div>
               </div>
 
               {showRoster ? (
                 <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
-                    {roster.map(student => {
-                      const record = liveRecords.find(r => r.studentId === student.id);
-                      const isPresent = record?.status?.includes('PRESENT');
-                      const isOD = record?.status === 'ON_DUTY' || record?.status === 'OD_PENDING';
-                      const isAbsent = record?.status === 'ABSENT';
-                      
-                      return (
-                        <div key={student.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${
-                          isPresent ? 'bg-green-500/10 border-green-500/20 shadow-lg shadow-green-500/5' : 
-                          isOD ? 'bg-blue-500/10 border-blue-500/20 shadow-lg shadow-blue-500/5' :
+                  {roster.map(student => {
+                    const record = liveRecords.find(r => r.studentId === student.id);
+                    const isPresent = record?.status?.includes('PRESENT');
+                    const isOD = record?.status === 'ON_DUTY' || record?.status === 'OD_PENDING';
+                    const isAbsent = record?.status === 'ABSENT';
+
+                    return (
+                      <div key={student.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isPresent ? 'bg-green-500/10 border-green-500/20 shadow-lg shadow-green-500/5' :
+                        isOD ? 'bg-blue-500/10 border-blue-500/20 shadow-lg shadow-blue-500/5' :
                           isAbsent ? 'bg-red-500/10 border-red-500/20' :
-                          'bg-white/5 border-white/5'
+                            'bg-white/5 border-white/5'
                         }`}>
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
-                              isPresent ? 'bg-green-500/20 text-green-400' : 
-                              isOD ? 'bg-blue-500/20 text-blue-400' :
-                              isAbsent ? 'bg-red-500/20 text-red-400' : 
-                              'bg-white/10 text-white/40'
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${isPresent ? 'bg-green-500/20 text-green-400' :
+                            isOD ? 'bg-blue-500/20 text-blue-400' :
+                              isAbsent ? 'bg-red-500/20 text-red-400' :
+                                'bg-white/10 text-white/40'
                             }`}>
-                              {student.name.charAt(0)}
-                            </div>
-                            <div>
-                              <p className={`font-bold text-sm ${isPresent || isOD || isAbsent ? 'text-white' : 'text-white/40'}`}>
-                                {student.name}
-                                {record?.status === 'OD_PENDING' && (
-                                   <span className="ml-2 px-1.5 py-0.5 rounded bg-blue-500 text-white text-[8px] font-bold animate-pulse">OD REQ</span>
-                                )}
-                              </p>
-                              <p className="text-[10px] text-white/20 uppercase tracking-widest leading-relaxed">
-                                {student.id} 
-                                {record?.od_letter_url && <a href={record.od_letter_url} target="_blank" className="ml-2 text-primary hover:underline font-bold">View Letter</a>}
-                                {record?.latitude && activeCourse && (
-                                  (() => {
-                                    const dist = getDistance(activeSessionId ? courses.find(c => c.id === activeSessionCourseId)?.latitude : null, 
-                                                            activeSessionId ? courses.find(c => c.id === activeSessionCourseId)?.longitude : null, 
-                                                            record.latitude, record.longitude);
-                                    if (dist === null) return null;
-                                    const isTooFar = dist > 150;
-                                    return (
-                                      <span className={`ml-3 px-2 py-0.5 rounded-full text-[8px] font-bold ${isTooFar ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-green-500/10 text-green-400'}`}>
-                                        {isTooFar ? 'PROXY ALERT: ' : ''}{Math.round(dist)}m away
-                                      </span>
-                                    );
-                                  })()
-                                )}
-                              </p>
-                            </div>
+                            {student.name.charAt(0)}
                           </div>
-                          
-                          <div className="flex items-center gap-2">
-                             <button
-                               onClick={() => markStatus(student.id, 'PRESENT')}
-                               className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${isPresent ? 'bg-green-500 text-white' : 'bg-white/5 text-white/40 hover:bg-green-500/20'}`}
-                             >
-                               Present
-                             </button>
-                             <button
-                               onClick={() => markStatus(student.id, 'ON_DUTY')}
-                               className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${isOD ? 'bg-blue-500 text-white' : 'bg-white/5 text-white/40 hover:bg-blue-500/20'}`}
-                             >
-                               {record?.status === 'OD_PENDING' ? 'Approve OD' : 'OD'}
-                             </button>
-                             <button
-                               onClick={() => markStatus(student.id, 'ABSENT')}
-                               className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${isAbsent ? 'bg-red-500 text-white' : 'bg-white/5 text-white/40 hover:bg-red-500/20'}`}
-                             >
-                               Absent
-                             </button>
+                          <div>
+                            <p className={`font-bold text-sm ${isPresent || isOD || isAbsent ? 'text-white' : 'text-white/40'}`}>
+                              {student.name}
+                              {record?.status === 'OD_PENDING' && (
+                                <span className="ml-2 px-1.5 py-0.5 rounded bg-blue-500 text-white text-[8px] font-bold animate-pulse">OD REQ</span>
+                              )}
+                            </p>
+                            <p className="text-[10px] text-white/20 uppercase tracking-widest leading-relaxed">
+                              {student.id}
+                              {record?.od_letter_url && <a href={record.od_letter_url} target="_blank" className="ml-2 text-primary hover:underline font-bold">View Letter</a>}
+                              {record?.latitude && activeCourse && (
+                                (() => {
+                                  const dist = getDistance(activeSessionId ? courses.find(c => c.id === activeSessionCourseId)?.latitude : null,
+                                    activeSessionId ? courses.find(c => c.id === activeSessionCourseId)?.longitude : null,
+                                    record.latitude, record.longitude);
+                                  if (dist === null) return null;
+                                  const isTooFar = dist > 150;
+                                  return (
+                                    <span className={`ml-3 px-2 py-0.5 rounded-full text-[8px] font-bold ${isTooFar ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-green-500/10 text-green-400'}`}>
+                                      {isTooFar ? 'PROXY ALERT: ' : ''}{Math.round(dist)}m away
+                                    </span>
+                                  );
+                                })()
+                              )}
+                            </p>
                           </div>
                         </div>
-                      );
-                    })}
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => markStatus(student.id, 'PRESENT')}
+                            className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${isPresent ? 'bg-green-500 text-white' : 'bg-white/5 text-white/40 hover:bg-green-500/20'}`}
+                          >
+                            Present
+                          </button>
+                          <button
+                            onClick={() => markStatus(student.id, 'ON_DUTY')}
+                            className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${isOD ? 'bg-blue-500 text-white' : 'bg-white/5 text-white/40 hover:bg-blue-500/20'}`}
+                          >
+                            {record?.status === 'OD_PENDING' ? 'Approve OD' : 'OD'}
+                          </button>
+                          <button
+                            onClick={() => markStatus(student.id, 'ABSENT')}
+                            className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all ${isAbsent ? 'bg-red-500 text-white' : 'bg-white/5 text-white/40 hover:bg-red-500/20'}`}
+                          >
+                            Absent
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
@@ -551,7 +552,7 @@ const AttendanceManager: React.FC = () => {
             {activeSessionId && sessionToken ? (
               <>
                 <div className="w-full aspect-square glass rounded-3xl mb-6 p-6 flex flex-col items-center justify-center relative group overflow-hidden bg-white">
-                  <QRCodeSVG 
+                  <QRCodeSVG
                     value={markUrl}
                     size={200}
                     level="H"
@@ -567,7 +568,7 @@ const AttendanceManager: React.FC = () => {
 
                 <h3 className="text-xl font-bold mb-1">QR Active</h3>
                 <p className="text-sm text-white/50 mb-2">{activeCourse?.name || activeSessionCourseId}</p>
-                
+
                 {/* Token display */}
                 <div className="w-full p-3 glass rounded-xl mb-4 border border-primary/20">
                   <p className="text-[10px] text-white/40 uppercase tracking-widest mb-1">Session Token</p>
@@ -577,9 +578,9 @@ const AttendanceManager: React.FC = () => {
                 {/* Countdown */}
                 <div className="w-full flex items-center gap-3 mb-4">
                   <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                    <motion.div 
+                    <motion.div
                       className="h-full bg-primary rounded-full"
-                      animate={{ width: `${(countdown / 30) * 100}%` }}
+                      animate={{ width: `${(countdown / QR_REFRESH_INTERVAL) * 100}%` }}
                       transition={{ duration: 0.5 }}
                     />
                   </div>
