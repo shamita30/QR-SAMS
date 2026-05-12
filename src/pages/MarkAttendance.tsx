@@ -7,12 +7,14 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { useAuthStore } from '../store/useAuthStore';
+import { useGamificationStore } from '../store/useGamificationStore';
 import { io } from 'socket.io-client';
 
 type MarkStatus = 'IDLE' | 'LOADING' | 'SUCCESS' | 'DUPLICATE' | 'ERROR' | 'NO_TOKEN';
 
 const MarkAttendance: React.FC = () => {
   const { user } = useAuthStore();
+  const { addXP } = useGamificationStore();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
 
@@ -97,6 +99,7 @@ const MarkAttendance: React.FC = () => {
       if (res.ok) {
         setStatus('SUCCESS');
         setMessage(`Attendance marked for ${data.courseName}!`);
+        addXP(25, 'attendance_marked');
       } else if (res.status === 409) {
         setStatus('DUPLICATE');
         setMessage(data.error || 'Already marked');
@@ -187,7 +190,7 @@ const MarkAttendance: React.FC = () => {
                       <button onClick={() => setShowScanner(true)} className="w-full py-5 rounded-2xl bg-primary/20 text-primary border border-primary/30 font-bold flex items-center justify-center gap-2 hover:bg-primary/30 transition-all uppercase tracking-widest text-xs">
                         <Camera size={18} /> Enable Optical Scanner
                       </button>
-                      <div className="relative"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"></div></div><div className="relative flex justify-center text-[10px] uppercase font-bold text-white/20"><span className="bg-[#050a1f] px-2">Manual Cipher</span></div></div>
+                      <div className="relative"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/5"></div></div><div className="relative flex justify-center text-[10px] uppercase font-bold text-white/20"><span className="bg-[#0a0e1a] px-2">Manual Cipher</span></div></div>
                       <form onSubmit={handleManualSubmit} className="space-y-4">
                         <input
                           type="text"

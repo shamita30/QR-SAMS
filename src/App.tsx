@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Landing from './pages/Landing';
@@ -34,8 +34,10 @@ import DatabaseExplorer from './pages/DatabaseExplorer';
 import BulkExport from './pages/BulkExport';
 import MarkAttendance from './pages/MarkAttendance';
 import AssignmentManager from './pages/AssignmentManager';
+import CampusRunner from './pages/CampusRunner';
 import { useAuthStore } from './store/useAuthStore';
 
+const CinematicIntro = lazy(() => import('./components/intro/CinematicIntro'));
 
 // Protected Route Wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -45,71 +47,99 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const App: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
+  const [showIntro, setShowIntro] = useState(false);
+
+  useEffect(() => {
+    // Only show intro once per session
+    const hasSeenIntro = sessionStorage.getItem('sentinel_intro_seen');
+    if (!hasSeenIntro) {
+      setShowIntro(true);
+    }
+  }, []);
+
+  const handleIntroComplete = () => {
+    sessionStorage.setItem('sentinel_intro_seen', 'true');
+    setShowIntro(false);
+  };
 
   return (
-    <Router>
-      <Routes>
-        <Route 
-          path="/login" 
-          element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} 
-        />
-        <Route 
-          path="/register" 
-          element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" />} 
-        />
+    <>
+      {/* Cinematic Intro */}
+      {showIntro && (
+        <Suspense fallback={null}>
+          <CinematicIntro onComplete={handleIntroComplete} />
+        </Suspense>
+      )}
 
-        {/* Core Dashboard */}
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/portal" element={<ProtectedRoute><StudentPortal /></ProtectedRoute>} />
-        
-        {/* Learning Tools */}
-        <Route path="/notes" element={<ProtectedRoute><NoteSynthesis /></ProtectedRoute>} />
-        <Route path="/soft-skills" element={<ProtectedRoute><SoftSkills /></ProtectedRoute>} />
-        <Route path="/study-area" element={<ProtectedRoute><StudyArea /></ProtectedRoute>} />
-        <Route path="/study-lounges" element={<ProtectedRoute><StudyLounges /></ProtectedRoute>} />
-        <Route path="/tutoring" element={<ProtectedRoute><Tutoring /></ProtectedRoute>} />
-        <Route path="/badges" element={<ProtectedRoute><SkillBadges /></ProtectedRoute>} />
-        <Route path="/quest" element={<ProtectedRoute><StudyQuest /></ProtectedRoute>} />
-        <Route path="/grades" element={<ProtectedRoute><MyGrades /></ProtectedRoute>} />
-        <Route path="/classes" element={<ProtectedRoute><MyClasses /></ProtectedRoute>} />
-        <Route path="/quiz" element={<ProtectedRoute><LectureQuiz /></ProtectedRoute>} />
-        
-        {/* Academic Management */}
-        <Route path="/attendance" element={<ProtectedRoute><AttendanceManager /></ProtectedRoute>} />
-        <Route path="/mark-attendance" element={<ProtectedRoute><MarkAttendance /></ProtectedRoute>} />
-        <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
-        <Route path="/assignments" element={<ProtectedRoute><AssignmentManager /></ProtectedRoute>} />
-        <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
+      {/* Main App */}
+      {!showIntro && (
+        <Router>
+          <Routes>
+            <Route 
+              path="/login" 
+              element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" />} 
+            />
+            <Route 
+              path="/register" 
+              element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" />} 
+            />
 
-        <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
-        
-        {/* Utilities */}
-        <Route path="/task-breaker" element={<ProtectedRoute><TaskBreaker /></ProtectedRoute>} />
-        <Route path="/book-swap" element={<ProtectedRoute><BookSwap /></ProtectedRoute>} />
-        
-        {/* Admin / HOD Tools */}
-        <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
-        <Route path="/sentiment" element={<ProtectedRoute><Sentiment /></ProtectedRoute>} />
-        <Route path="/chat" element={<ProtectedRoute><GlobalChat /></ProtectedRoute>} />
-        <Route path="/broadcasts" element={<ProtectedRoute><GlobalBroadcasts /></ProtectedRoute>} />
-        <Route path="/college-reports" element={<ProtectedRoute><CollegeReports /></ProtectedRoute>} />
-        <Route path="/student-db" element={<ProtectedRoute><StudentDatabase /></ProtectedRoute>} />
-        <Route path="/faculty-dir" element={<ProtectedRoute><FacultyDirectory /></ProtectedRoute>} />
-        <Route path="/db-explorer" element={<ProtectedRoute><DatabaseExplorer /></ProtectedRoute>} />
-        <Route path="/bulk-export" element={<ProtectedRoute><BulkExport /></ProtectedRoute>} />
-        
-        {/* Settings */}
-        <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            {/* Core Dashboard */}
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/portal" element={<ProtectedRoute><StudentPortal /></ProtectedRoute>} />
+            <Route path="/runner" element={<ProtectedRoute><CampusRunner /></ProtectedRoute>} />
+            
+            {/* Learning Tools */}
+            <Route path="/notes" element={<ProtectedRoute><NoteSynthesis /></ProtectedRoute>} />
+            <Route path="/soft-skills" element={<ProtectedRoute><SoftSkills /></ProtectedRoute>} />
+            <Route path="/study-area" element={<ProtectedRoute><StudyArea /></ProtectedRoute>} />
+            <Route path="/study-lounges" element={<ProtectedRoute><StudyLounges /></ProtectedRoute>} />
+            <Route path="/tutoring" element={<ProtectedRoute><Tutoring /></ProtectedRoute>} />
+            <Route path="/badges" element={<ProtectedRoute><SkillBadges /></ProtectedRoute>} />
+            <Route path="/quest" element={<ProtectedRoute><StudyQuest /></ProtectedRoute>} />
+            <Route path="/grades" element={<ProtectedRoute><MyGrades /></ProtectedRoute>} />
+            <Route path="/classes" element={<ProtectedRoute><MyClasses /></ProtectedRoute>} />
+            <Route path="/quiz" element={<ProtectedRoute><LectureQuiz /></ProtectedRoute>} />
+            
+            {/* Academic Management */}
+            <Route path="/attendance" element={<ProtectedRoute><AttendanceManager /></ProtectedRoute>} />
+            <Route path="/mark-attendance" element={<ProtectedRoute><MarkAttendance /></ProtectedRoute>} />
+            <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
+            <Route path="/assignments" element={<ProtectedRoute><AssignmentManager /></ProtectedRoute>} />
+            <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
 
-        {/* Redirects */}
-        <Route 
-          path="/" 
-          element={<Landing />} 
-        />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </Router>
+            <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+            
+            {/* Utilities */}
+            <Route path="/task-breaker" element={<ProtectedRoute><TaskBreaker /></ProtectedRoute>} />
+            <Route path="/book-swap" element={<ProtectedRoute><BookSwap /></ProtectedRoute>} />
+            
+            {/* Admin / HOD Tools */}
+            <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
+            <Route path="/sentiment" element={<ProtectedRoute><Sentiment /></ProtectedRoute>} />
+            <Route path="/chat" element={<ProtectedRoute><GlobalChat /></ProtectedRoute>} />
+            <Route path="/broadcasts" element={<ProtectedRoute><GlobalBroadcasts /></ProtectedRoute>} />
+            <Route path="/college-reports" element={<ProtectedRoute><CollegeReports /></ProtectedRoute>} />
+            <Route path="/student-db" element={<ProtectedRoute><StudentDatabase /></ProtectedRoute>} />
+            <Route path="/faculty-dir" element={<ProtectedRoute><FacultyDirectory /></ProtectedRoute>} />
+            <Route path="/db-explorer" element={<ProtectedRoute><DatabaseExplorer /></ProtectedRoute>} />
+            <Route path="/bulk-export" element={<ProtectedRoute><BulkExport /></ProtectedRoute>} />
+            
+            {/* Settings */}
+            <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+
+            {/* Redirects */}
+            <Route 
+              path="/" 
+              element={<Landing />} 
+            />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </Router>
+      )}
+    </>
   );
 };
 
 export default App;
+

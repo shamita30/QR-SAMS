@@ -7,6 +7,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/useAuthStore';
 import { useToastStore } from '../store/useToastStore';
+import { useGamificationStore } from '../store/useGamificationStore';
 import GlassCard from '../components/ui/GlassCard';
 import NeonButton from '../components/ui/NeonButton';
 import { api } from '../services/api';
@@ -35,6 +36,7 @@ interface Submission {
 const AssignmentManager: React.FC = () => {
   const { user } = useAuthStore();
   const { addToast } = useToastStore();
+  const { addXP } = useGamificationStore();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -110,6 +112,7 @@ const AssignmentManager: React.FC = () => {
       });
       if (res.ok) {
         addToast('Data packet transmitted.', 'SUCCESS');
+        addXP(30, 'assignment_submitted');
         setSubmissionContent('');
         setSelectedAssignment(null);
       }
@@ -184,7 +187,7 @@ const AssignmentManager: React.FC = () => {
                 }}
                 className={`cursor-pointer p-6 rounded-[2rem] border-2 transition-all duration-300 ${
                   selectedAssignment?.id === asgn.id 
-                    ? 'bg-primary/20 border-primary shadow-[0_0_25px_rgba(59,130,246,0.2)]' 
+                    ? 'bg-primary/20 border-primary shadow-[0_0_25px_rgba(244,63,94,0.2)]' 
                     : 'bg-white/5 border-white/5 hover:border-white/20'
                 }`}
               >
@@ -328,7 +331,7 @@ const AssignmentManager: React.FC = () => {
 
                                 <div className="flex gap-4">
                                    <NeonButton 
-                                     variant="secondary"
+                                     variant="pink"
                                      onClick={() => handleAIGrade(sub)}
                                      className={`flex-1 py-3 text-[10px] uppercase tracking-[0.2em] border-accent/40 hover:bg-accent/10 ${isGrading === sub.id ? 'opacity-50 pointer-events-none' : ''}`}
                                    >

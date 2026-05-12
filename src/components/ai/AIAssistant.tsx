@@ -43,7 +43,7 @@ const AIAssistant: React.FC = () => {
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            className="fixed bottom-28 right-8 w-80 sm:w-96 h-[500px] z-[100] flex flex-col rounded-[2rem] overflow-hidden glass border border-white/20 shadow-[0_10px_50px_rgba(59,130,246,0.3)]"
+            className="fixed bottom-28 right-8 w-80 sm:w-96 h-[500px] z-[100] flex flex-col rounded-[2rem] overflow-hidden glass border border-white/20 shadow-[0_10px_50px_rgba(244,63,94,0.3)]"
           >
             {/* Header */}
             <div className="p-4 bg-primary/20 backdrop-blur-md border-b border-primary/20 flex items-center justify-between">
@@ -99,7 +99,7 @@ const AIAssistant: React.FC = () => {
               <button 
                 type="submit"
                 disabled={!inputText.trim() || loading}
-                className="p-3 bg-primary rounded-xl text-white shadow-lg hover:shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all disabled:opacity-50 disabled:grayscale"
+                className="p-3 bg-primary rounded-xl text-white shadow-lg hover:shadow-[0_0_15px_rgba(244,63,94,0.5)] transition-all disabled:opacity-50 disabled:grayscale"
               >
                 <Send size={18} />
               </button>
@@ -113,7 +113,7 @@ const AIAssistant: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className={`fixed bottom-8 right-8 w-16 h-16 rounded-3xl flex items-center justify-center text-white shadow-[0_8px_32px_rgba(59,130,246,0.4)] z-[100] group overflow-hidden transition-all duration-300 ${isOpen ? 'bg-white/10 glass border border-white/20 text-white' : 'bg-gradient-to-br from-primary to-secondary'}`}
+        className={`fixed bottom-8 right-8 w-16 h-16 rounded-3xl flex items-center justify-center text-white shadow-[0_8px_32px_rgba(244,63,94,0.4)] z-[100] group overflow-hidden transition-all duration-300 ${isOpen ? 'bg-white/10 glass border border-white/20 text-white' : 'bg-gradient-to-br from-primary to-secondary'}`}
       >
         <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
         {!isOpen && (

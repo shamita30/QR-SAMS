@@ -98,11 +98,11 @@ const Tutoring: React.FC = () => {
         
         <div className="flex gap-3">
           {isAdminOrFaculty ? (
-            <NeonButton variant="secondary">
+            <NeonButton variant="pink">
                <Star size={18} className="text-secondary" /> Sync as Expert
             </NeonButton>
           ) : (
-            <NeonButton onClick={() => setShowAddRequest(true)} className="pr-8 shadow-[0_0_20px_rgba(59,130,246,0.2)]">
+            <NeonButton onClick={() => setShowAddRequest(true)} className="pr-8 shadow-[0_0_20px_rgba(244,63,94,0.2)]">
               <PlusCircle size={18} /> Broadcast Request
             </NeonButton>
           )}
@@ -162,17 +162,17 @@ const Tutoring: React.FC = () => {
         {activeTab === 'AVAIL_TUTORS' ? (
           <motion.div key="tutors" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {(Array.isArray(tutors) ? tutors : []).map((tutor: any, i: number) => (
-              <GlassCard key={tutor.id} delay={i * 0.1} className="flex flex-col gap-6 relative group border border-white/5 hover:-translate-y-2 transition-all duration-300 shadow-xl hover:shadow-[0_0_40px_rgba(59,130,246,0.15)] overflow-hidden">
-                <div className="absolute top-0 inset-x-0 h-1" style={{ backgroundColor: tutor.color || '#3b82f6' }} />
+              <GlassCard key={tutor.id} delay={i * 0.1} className="flex flex-col gap-6 relative group border border-white/5 hover:-translate-y-2 transition-all duration-300 shadow-xl hover:shadow-[0_0_40px_rgba(244,63,94,0.15)] overflow-hidden">
+                <div className="absolute top-0 inset-x-0 h-1" style={{ backgroundColor: tutor.color || '#f43f5e' }} />
                 
                 <div className="flex items-center gap-5">
-                  <div className="w-16 h-16 rounded-[1.5rem] flex items-center justify-center font-outfit font-bold text-2xl border-2 relative group-hover:scale-105 transition-transform shadow-[0_0_20px_rgba(0,0,0,0.5)] z-10" style={{ backgroundColor: `${tutor.color || '#3b82f6'}20`, borderColor: `${tutor.color || '#3b82f6'}40`, color: tutor.color || '#3b82f6' }}>
+                  <div className="w-16 h-16 rounded-[1.5rem] flex items-center justify-center font-outfit font-bold text-2xl border-2 relative group-hover:scale-105 transition-transform shadow-[0_0_20px_rgba(0,0,0,0.5)] z-10" style={{ backgroundColor: `${tutor.color || '#f43f5e'}20`, borderColor: `${tutor.color || '#f43f5e'}40`, color: tutor.color || '#f43f5e' }}>
                     <div className="absolute inset-0 bg-white/5 animate-pulse rounded-[1.5rem]" />
                     {tutor.name ? tutor.name.charAt(0) : '?'}
                   </div>
                   <div className="z-10">
                     <h3 className="text-xl font-bold text-white group-hover:text-primary transition-colors uppercase tracking-tight leading-tight">{tutor.name || 'Unknown Tutor'}</h3>
-                    <p className="text-[10px] uppercase tracking-[0.3em] font-bold mt-1" style={{ color: tutor.color || '#3b82f6' }}>{tutor.expert || 'General'}</p>
+                    <p className="text-[10px] uppercase tracking-[0.3em] font-bold mt-1" style={{ color: tutor.color || '#f43f5e' }}>{tutor.expert || 'General'}</p>
                   </div>
                 </div>
                 
@@ -202,7 +202,7 @@ const Tutoring: React.FC = () => {
                 </div>
 
                 <div className="flex gap-3 mt-auto z-10">
-                  <NeonButton className="flex-1 py-3 text-[10px] uppercase tracking-widest shadow-lg hover:scale-[1.02] active:scale-95 transition-transform" style={{ borderColor: tutor.color, color: tutor.color }}>
+                  <NeonButton className="flex-1 py-3 text-[10px] uppercase tracking-widest shadow-lg hover:scale-[1.02] active:scale-95 transition-transform" variant="pink">
                      Reserve Sync
                   </NeonButton>
                   <button className="w-12 h-12 rounded-xl flex items-center justify-center hover:bg-white/10 transition-all shadow-lg border relative overflow-hidden group" style={{ borderColor: `${tutor.color}30`, backgroundColor: `${tutor.color}10`, color: tutor.color }}>
@@ -248,7 +248,7 @@ const Tutoring: React.FC = () => {
                      <span className="text-[10px] font-bold text-accent uppercase tracking-widest shadow-[0_0_10px_rgba(0,210,255,0.4)]">High Priority Signal</span>
                   </div>
                   {isAdminOrFaculty && req.status === 'OPEN' ? (
-                    <NeonButton onClick={() => handleAcceptRequest(req.id)} variant="secondary" className="flex-1 md:flex-none border-primary/20 hover:bg-primary/10 hover:text-primary">
+                    <NeonButton onClick={() => handleAcceptRequest(req.id)} variant="pink" className="flex-1 md:flex-none border-primary/20 hover:bg-primary/10 hover:text-primary">
                       Initiate Sync <ChevronRight size={16} />
                     </NeonButton>
                   ) : (

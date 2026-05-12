@@ -98,7 +98,7 @@ const StudyQuest: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-4">
-          <NeonButton variant="secondary" onClick={() => setShowShop(true)} className="pr-8 border-secondary/20 hover:bg-secondary/10">
+          <NeonButton variant="pink" onClick={() => setShowShop(true)} className="pr-8 border-secondary/20 hover:bg-secondary/10">
             <Gift size={20} className="text-secondary" /> Perks Vault
           </NeonButton>
           
@@ -122,7 +122,7 @@ const StudyQuest: React.FC = () => {
       </div>
 
       {/* Map Container */}
-      <div className="flex-1 glass rounded-[3rem] p-12 relative overflow-hidden bg-[radial-gradient(circle_at_50%_50%,#0a1128_0%,#050a1f_100%)] border-white/5 shadow-inner min-h-[500px]">
+      <div className="flex-1 glass rounded-[3rem] p-12 relative overflow-hidden bg-[radial-gradient(ellipse_at_30%_0%,#1a1020_0%,#0a0e1a_100%)] border-white/5 shadow-inner min-h-[500px]">
         {/* SVG Path Background */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-10" preserveAspectRatio="none">
           <motion.path 
@@ -155,7 +155,7 @@ const StudyQuest: React.FC = () => {
                 disabled={node.status === 'LOCKED'}
                 className={`w-24 h-24 rounded-[2.5rem] flex items-center justify-center text-2xl transition-all duration-500 border-4 relative shadow-2xl ${
                   node.status === 'COMPLETED' ? 'bg-accent/20 border-accent/40 text-accent group-hover:bg-accent/30' :
-                  node.status === 'ACTIVE' ? 'bg-primary/20 border-primary shadow-[0_0_30px_rgba(59,130,246,0.3)] text-white hover:shadow-[0_0_40px_rgba(59,130,246,0.5)]' :
+                  node.status === 'ACTIVE' ? 'bg-primary/20 border-primary shadow-[0_0_30px_rgba(244,63,94,0.3)] text-white hover:shadow-[0_0_40px_rgba(244,63,94,0.5)]' :
                   'bg-white/5 border-white/10 text-white/10 grayscale cursor-not-allowed'
                 }`}
               >
@@ -391,9 +391,9 @@ const StudyQuest: React.FC = () => {
 
                 <div className="flex-1 space-y-4 overflow-y-auto pr-4 custom-scrollbar relative z-10">
                   {[
-                    { title: 'Neon Pulse Theme', cost: 500, icon: Sparkles, color: '#3b82f6', desc: 'Futuristic UI override' },
-                    { title: 'Attendance Token', cost: 1500, icon: CheckCircle2, color: '#a855f7', desc: 'Protocol override (1x)' },
-                    { title: 'Neural Quiz Booster', cost: 250, icon: Brain, color: '#00d2ff', desc: 'Extra sync attempt' },
+                    { title: 'Neon Pulse Theme', cost: 500, icon: Sparkles, color: '#f43f5e', desc: 'Futuristic UI override' },
+                    { title: 'Attendance Token', cost: 1500, icon: CheckCircle2, color: '#fda4af', desc: 'Protocol override (1x)' },
+                    { title: 'Neural Quiz Booster', cost: 250, icon: Brain, color: '#38bdf8', desc: 'Extra sync attempt' },
                     { title: 'Citadel Avatar Key', cost: 800, icon: Rocket, color: '#f59e0b', desc: 'Legendary visual tier' },
                   ].map((item, idx) => (
                     <GlassCard key={idx} className="p-6 border-white/5 hover:border-secondary/20 relative group overflow-hidden" hover={true}>

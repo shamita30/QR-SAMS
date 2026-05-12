@@ -174,7 +174,7 @@ const StudyLounges: React.FC = () => {
                 Initialize secure peer-learning sessions and knowledge transfers.
               </p>
             </div>
-            <NeonButton onClick={() => setShowCreateModal(true)} className="pr-8 shadow-[0_0_20px_rgba(59,130,246,0.2)]">
+            <NeonButton onClick={() => setShowCreateModal(true)} className="pr-8 shadow-[0_0_20px_rgba(244,63,94,0.2)]">
               <Plus size={18} /> Provision New Room
             </NeonButton>
           </div>
@@ -193,7 +193,7 @@ const StudyLounges: React.FC = () => {
             {lounges.map((room, i) => (
               <GlassCard key={room.id} delay={i * 0.1}>
                  <div className="flex justify-between items-start mb-6">
-                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary border border-primary/20 shadow-[0_0_15px_rgba(59,130,246,0.1)]">
+                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary border border-primary/20 shadow-[0_0_15px_rgba(244,63,94,0.1)]">
                        <Coffee size={24} />
                     </div>
                     {room.live ? (
@@ -310,7 +310,7 @@ const StudyLounges: React.FC = () => {
         >
           {/* Active Room View would go here - simplified for current task */}
           <GlassCard className="lg:col-span-3 bg-black/40 flex items-center justify-center relative overflow-hidden" hover={false}>
-             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.1)_0%,transparent_50%)]" />
+             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(244,63,94,0.1)_0%,transparent_50%)]" />
              
              {activeRoom.waiting ? (
                 <div className="text-center space-y-6">

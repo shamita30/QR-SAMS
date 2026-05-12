@@ -76,7 +76,7 @@ const GlobalChat: React.FC = () => {
               onClick={() => setActiveRoom(room.id)}
               className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center gap-3 ${
                 activeRoom === room.id 
-                ? 'bg-primary/20 border-primary shadow-[0_0_20px_rgba(59,130,246,0.1)] text-white' 
+                ? 'bg-primary/20 border-primary shadow-[0_0_20px_rgba(244,63,94,0.1)] text-white' 
                 : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
               }`}
             >

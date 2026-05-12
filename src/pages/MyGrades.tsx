@@ -134,10 +134,10 @@ const MyGrades: React.FC = () => {
                     <XAxis dataKey="semester" stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} />
                     <YAxis stroke="#ffffff40" fontSize={10} tickLine={false} axisLine={false} domain={['dataMin - 0.5', 'dataMax + 0.5']} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #3b82f640', borderRadius: '12px' }}
-                      itemStyle={{ color: '#3b82f6', fontWeight: 'bold' }}
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #f43f5e40', borderRadius: '12px' }}
+                      itemStyle={{ color: '#f43f5e', fontWeight: 'bold' }}
                     />
-                    <Line type="stepAfter" dataKey="gpa" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4, fill: '#0f172a', stroke: '#3b82f6', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#3b82f6' }} />
+                    <Line type="stepAfter" dataKey="gpa" stroke="#f43f5e" strokeWidth={3} dot={{ r: 4, fill: '#0f172a', stroke: '#f43f5e', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#f43f5e' }} />
                   </LineChart>
                 </ResponsiveContainer>
              </div>

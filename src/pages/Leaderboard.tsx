@@ -178,7 +178,7 @@ const Leaderboard: React.FC = () => {
             </div>
             <div className="w-full md:w-1/2">
                <div className="h-2 bg-white/5 rounded-full overflow-hidden mb-2">
-                  <div className="h-full bg-primary shadow-[0_0_15px_rgba(59,130,246,0.6)]" style={{ width: '65%' }} />
+                  <div className="h-full bg-primary shadow-[0_0_15px_rgba(244,63,94,0.6)]" style={{ width: '65%' }} />
                </div>
                <div className="flex justify-between text-[10px] font-bold text-white/30 tracking-tighter">
                   <span>BRONZE</span>

@@ -24,9 +24,9 @@ const SkillBadges: React.FC = () => {
       else {
         // Fallback for demo if API fails
         setBadges([
-          { id: 'b1', title: 'Cloud Pioneer', level: 'Pro', description: 'Mastered AWS/Azure deployments', icon: 'Cloud', earned: true, xp: 500, color: '#3b82f6', requirement: 'Complete 5 Cloud Labs' },
-          { id: 'b2', title: 'Code Architect', level: 'Expert', description: 'Excellence in system design', icon: 'Code', earned: true, xp: 800, color: '#a855f7', requirement: 'Lead 2 Project Teams' },
-          { id: 'b3', title: 'Bug Hunter', level: 'Elite', description: 'Identified 50+ critical vulnerabilities', icon: 'Shield', earned: false, xp: 1200, color: '#00d2ff', requirement: 'Submit 50 Quality Bug Reports' },
+          { id: 'b1', title: 'Cloud Pioneer', level: 'Pro', description: 'Mastered AWS/Azure deployments', icon: 'Cloud', earned: true, xp: 500, color: '#f43f5e', requirement: 'Complete 5 Cloud Labs' },
+          { id: 'b2', title: 'Code Architect', level: 'Expert', description: 'Excellence in system design', icon: 'Code', earned: true, xp: 800, color: '#fda4af', requirement: 'Lead 2 Project Teams' },
+          { id: 'b3', title: 'Bug Hunter', level: 'Elite', description: 'Identified 50+ critical vulnerabilities', icon: 'Shield', earned: false, xp: 1200, color: '#38bdf8', requirement: 'Submit 50 Quality Bug Reports' },
           { id: 'b4', title: 'AI Virtuoso', level: 'Pro', description: 'Implemented self-learning neural nets', icon: 'Brain', earned: false, xp: 1000, color: '#f59e0b', requirement: 'Deploy 1 ML Model to Prod' },
         ]);
       }
@@ -41,7 +41,7 @@ const SkillBadges: React.FC = () => {
     return true;
   });
 
-  const AnimatedBadgeGraphic = ({ iconName, size = 24, color = '#3b82f6' }: { iconName: string, size?: number, color?: string }) => {
+  const AnimatedBadgeGraphic = ({ iconName, size = 24, color = '#f43f5e' }: { iconName: string, size?: number, color?: string }) => {
     const IconComponent = () => {
       switch (iconName) {
         case 'Award': return <Award size={size} color={color} />;
@@ -214,7 +214,7 @@ const SkillBadges: React.FC = () => {
                        <p className="text-[10px] font-bold text-primary uppercase">32% Completed</p>
                     </div>
                     <div className="h-2 bg-white/5 rounded-full overflow-hidden mb-4 p-[1px]">
-                       <div className="h-full bg-gradient-to-r from-primary to-accent rounded-full shadow-[0_0_10px_rgba(59,130,246,0.3)]" style={{ width: '32%' }} />
+                       <div className="h-full bg-gradient-to-r from-primary to-accent rounded-full shadow-[0_0_10px_rgba(244,63,94,0.3)]" style={{ width: '32%' }} />
                     </div>
                     <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest text-center italic leading-relaxed">
                        {selectedBadge.requirement}
